@@ -46,6 +46,12 @@
 
   // ---------- raster art helpers ----------
   var RASTER = !!A.useRaster;
+  // The pizza BASE stays inline-SVG even in raster mode: PNG pizza layers
+  // triggered a GPU texture-aliasing bug on iPad/Chromebook where the pizza
+  // area showed stale topping textures until first touch. SVG draws as vectors
+  // (no image textures) and is immune. Oven/characters/scenes stay raster.
+  var PIZZA_RASTER = false;
+  var OVEN_RASTER = !!(A.useRaster && A.ovenImg);
   function charImgTag(key, kind, extra) {
     var c = A.charImg && A.charImg[key];
     if (!c) return '';
@@ -378,24 +384,32 @@
     forcePizzaPaint();
   }
 
-  // Ask the browser to decode the pizza-layer images up front so they are
-  // ready to paint the moment the kitchen screen appears (no blank frame).
-  function forcePizzaPaint() {
-    var imgs = pizzaBase.querySelectorAll('img');
-    imgs.forEach(function (im) {
-      if (im.decode) { try { im.decode().catch(function () {}); } catch (e) {} }
-    });
+  // The pizza base renders as inline SVG (vectors), which paints reliably on
+  // entry — no image warm-up or repaint nudging needed.
+  function forcePizzaPaint() {}
+
+  // Create a raster pizza layer on demand (once). Building the layers
+  // progressively — instead of stacking all five images up front — avoids a
+  // GPU compositing bug on iPad/Chromebook where the pile of same-position
+  // images showed stale topping textures until the first touch.
+  function pzEnsure(cls, src, style) {
+    var el = pizzaBase.querySelector('.' + cls);
+    if (el) return el;
+    el = document.createElement('img');
+    el.className = 'pz-layer ' + cls;
+    el.src = src;
+    el.alt = '';
+    el.draggable = false;
+    if (style) el.setAttribute('style', style);
+    pizzaBase.appendChild(el);
+    return el;
   }
 
   function buildPizzaBase() {
-    if (RASTER && A.pizzaImg) {
-      var P = A.pizzaImg;
+    if (PIZZA_RASTER) {
+      // only the dough exists at first — one image, like every other screen
       pizzaBase.innerHTML =
-        '<img class="pz-layer pz-crust" src="' + P.crust + '" style="display:none" alt="" draggable="false">' +
-        '<img class="pz-layer pz-sauce" src="' + P.sauce + '" style="clip-path:circle(0% at 50% 50%);-webkit-clip-path:circle(0% at 50% 50%)" alt="" draggable="false">' +
-        '<img class="pz-layer pz-cheese" src="' + P.cheese + '" style="opacity:0" alt="" draggable="false">' +
-        '<img class="pz-layer pz-baked" src="' + P.baked + '" style="opacity:0" alt="" draggable="false">' +
-        '<div id="dough-ball"><img class="pz-layer pz-dough" src="' + P.dough + '" alt="" draggable="false"></div>';
+        '<div id="dough-ball"><img class="pz-layer pz-dough" src="' + A.pizzaImg.dough + '" alt="" draggable="false"></div>';
       return;
     }
     pizzaBase.innerHTML =
@@ -421,15 +435,20 @@
     hint.textContent = stepHints[step] || '';
     hint.style.opacity = stepHints[step] ? 1 : 0;
     if (step === 'sauce') {
+      if (PIZZA_RASTER) pzEnsure('pz-sauce', A.pizzaImg.sauce, 'clip-path:circle(0% at 50% 50%);-webkit-clip-path:circle(0% at 50% 50%)');
       toolCursor.innerHTML = A.food.ladle || '';
       toolCursor.classList.toggle('hidden', !A.food.ladle);
     } else if (step === 'cheese') {
+      if (PIZZA_RASTER) pzEnsure('pz-cheese', A.pizzaImg.cheese, 'opacity:0');
       toolCursor.innerHTML = A.food.shaker || '';
       toolCursor.classList.toggle('hidden', !A.food.shaker);
     } else {
       toolCursor.classList.add('hidden');
     }
     if (step === 'toppings') {
+      // baked-browning overlay is created now (hidden) so it is part of the
+      // pizza that gets cloned into the oven at bake time
+      if (PIZZA_RASTER) pzEnsure('pz-baked', A.pizzaImg.baked, 'opacity:0');
       buildBins();
       $('topping-bins').classList.remove('hidden');
     }
@@ -521,8 +540,13 @@
     if (st.doughTaps >= 3) {
       setTimeout(function () {
         ball.style.display = 'none';
-        var crust = pizzaBase.querySelector('.pz-crust') || document.getElementById('pz-crust');
-        if (crust) crust.style.display = '';
+        var crust;
+        if (PIZZA_RASTER) {
+          crust = pzEnsure('pz-crust', A.pizzaImg.crust, '');
+        } else {
+          crust = document.getElementById('pz-crust');
+          if (crust) crust.style.display = '';
+        }
         pizzaBase.classList.remove('pop');
         void pizzaBase.offsetWidth;
         pizzaBase.classList.add('pop');
@@ -544,7 +568,7 @@
       var r = zoneRect();
       st.sauceProgress += d / (r.width * 1.9);
       var frac = Math.min(1, st.sauceProgress);
-      if (RASTER) {
+      if (PIZZA_RASTER) {
         var sauceEl = pizzaBase.querySelector('.pz-sauce');
         if (sauceEl) {
           var pct = (frac * 58).toFixed(1) + '% at 50% 50%';
@@ -574,7 +598,7 @@
     st.cheeseTaps++;
     AU.sprinkle();
     var cheeseAmt = Math.min(1, st.cheeseTaps / 3);
-    if (RASTER) {
+    if (PIZZA_RASTER) {
       var cheeseEl = pizzaBase.querySelector('.pz-cheese');
       if (cheeseEl) cheeseEl.style.opacity = cheeseAmt;
     } else {
@@ -730,13 +754,10 @@
       doorLayer.id = 'oven-door-layer';
       overlay.insertBefore(doorLayer, $('oven-timer'));
     }
-    var snap;
-    if (RASTER && A.ovenImg) {
+    // ---- oven art (raster image, or SVG fallback) ----
+    if (OVEN_RASTER) {
       ovenArt.innerHTML = '<img class="oven-body" src="' + A.ovenImg.body + '" alt="" draggable="false">';
       doorLayer.innerHTML = '<img class="oven-door" src="' + A.ovenImg.door + '" alt="" draggable="false">';
-      // raster pizza layers use classes + inline styles, so no id renaming needed
-      snap = '<div style="position:absolute;inset:0">' + pizzaBase.innerHTML + '</div>' +
-        '<div style="position:absolute;inset:0;pointer-events:none">' + pizzaTops.innerHTML + '</div>';
     } else {
       ovenArt.innerHTML = A.scenes.oven || '<svg viewBox="0 0 520 560"><rect x="40" y="80" width="440" height="420" rx="60" fill="#C0574F" stroke="#4A2E24" stroke-width="8"/><rect x="110" y="220" width="300" height="210" rx="40" fill="#3A241C"/><g class="oven-door"><rect x="90" y="210" width="340" height="230" rx="40" fill="#F2B84B" stroke="#4A2E24" stroke-width="8"/></g></svg>';
       var srcSvg = ovenArt.querySelector('svg');
@@ -745,10 +766,14 @@
         doorLayer.innerHTML = '<svg viewBox="' + (srcSvg.getAttribute('viewBox') || '0 0 520 560') + '" xmlns="http://www.w3.org/2000/svg"></svg>';
         doorLayer.querySelector('svg').appendChild(doorG);
       }
-      // snapshot the pizza (rename ids to avoid collisions with the kitchen pizza)
-      snap = ('<div style="position:absolute;inset:0">' + pizzaBase.innerHTML + '</div>' +
-        '<div style="position:absolute;inset:0;pointer-events:none">' + pizzaTops.innerHTML + '</div>')
-        .split('pz-').join('pz2-').split('dough-ball').join('dough-ball-2');
+    }
+    // ---- snapshot the pizza into the oven ----
+    var snap = '<div style="position:absolute;inset:0">' + pizzaBase.innerHTML + '</div>' +
+      '<div style="position:absolute;inset:0;pointer-events:none">' + pizzaTops.innerHTML + '</div>';
+    // the SVG pizza uses element ids (pz-crust, pz-clip, dough-ball, …) — rename
+    // them in the clone so they don't collide with the kitchen pizza's ids
+    if (!PIZZA_RASTER) {
+      snap = snap.split('pz-').join('pz2-').split('dough-ball').join('dough-ball-2');
     }
     ovenPizza.innerHTML = snap;
     ovenPizza.className = '';
