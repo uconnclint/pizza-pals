@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pizza Pals!">
+<title>Pizza Pals! 🍕</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🍕%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="rotate-overlay">
+  <div class="rotate-card">
+    <div class="rotate-emoji">🔄📱</div>
+    <div class="rotate-text">Turn your tablet sideways!</div>
+  </div>
+</div>
+
+<div id="app">
+  <!-- ============ TITLE SCREEN ============ -->
+  <section id="screen-title" class="screen">
+    <div class="title-bg"></div>
+    <div class="title-floaties" id="title-floaties"></div>
+    <div class="title-content">
+      <div id="title-logo" class="title-logo"></div>
+      <button id="btn-play" class="big-btn btn-play">▶&nbsp; Play!</button>
+      <div class="title-row">
+        <button id="btn-stickers" class="round-btn" aria-label="Sticker book">📖</button>
+        <button id="btn-sound-title" class="round-btn btn-sound" aria-label="Sound on or off">🔊</button>
+      </div>
+      <div class="title-badge" id="title-badge"></div>
+    </div>
+  </section>
+
+  <!-- ============ COUNTER (customer) SCREEN ============ -->
+  <section id="screen-counter" class="screen">
+    <div class="scene-bg" id="counter-bg"></div>
+    <div id="customer-slot"><div id="customer-art"></div></div>
+    <div class="counter-front" id="counter-front"></div>
+    <div id="speech-bubble" class="speech-bubble hidden">
+      <div id="speech-text"></div>
+      <div id="speech-order" class="order-card hidden"></div>
+      <button id="btn-hear" class="hear-btn hidden" aria-label="Hear the order">🔊 Hear it</button>
+    </div>
+    <div id="serve-tray" class="serve-tray hidden"></div>
+    <button id="btn-make" class="big-btn btn-make hidden">Let's make it! 🍕</button>
+    <button id="btn-next" class="big-btn btn-next hidden">Next customer! 🔔</button>
+  </section>
+
+  <!-- ============ KITCHEN SCREEN ============ -->
+  <section id="screen-kitchen" class="screen">
+    <div class="scene-bg" id="kitchen-bg"></div>
+    <div id="kitchen-order" class="order-strip"></div>
+    <div id="step-hint" class="step-hint"></div>
+    <div id="pizza-zone">
+      <div id="pizza-wrap">
+        <div id="pizza-base"></div>
+        <div id="pizza-toppings"></div>
+      </div>
+      <div id="tool-cursor" class="hidden"></div>
+    </div>
+    <div id="topping-bins" class="topping-bins hidden"></div>
+    <button id="btn-bake" class="big-btn btn-bake hidden">Bake it! 🔥</button>
+    <!-- oven overlay -->
+    <div id="oven-overlay" class="hidden">
+      <div id="oven-art"></div>
+      <div id="oven-pizza"></div>
+      <div id="oven-timer" class="hidden"><div id="oven-timer-fill"></div><div id="oven-timer-emoji">🍕</div></div>
+      <div id="oven-label" class="oven-label hidden"></div>
+      <button id="btn-serve" class="big-btn btn-serve hidden">Serve it! 🛎️</button>
+    </div>
+  </section>
+
+  <!-- ============ STICKER BOOK ============ -->
+  <section id="screen-stickers" class="screen">
+    <div class="stickers-bg"></div>
+    <h1 class="stickers-title">⭐ My Pizza Pals ⭐</h1>
+    <div id="sticker-grid" class="sticker-grid"></div>
+    <button id="btn-stickers-back" class="big-btn btn-back-title">⬅ Back</button>
+  </section>
+
+  <!-- persistent HUD -->
+  <div id="hud" class="hidden">
+    <button id="btn-home" class="round-btn" aria-label="Home">🏠</button>
+    <div class="hud-pill" id="hud-coins"><span class="hud-ico" id="hud-coin-ico">🪙</span><span id="coin-count">0</span></div>
+    <div class="hud-pill" id="hud-served"><span class="hud-ico">🍕</span><span id="served-count">0</span></div>
+    <button id="btn-sound" class="round-btn btn-sound" aria-label="Sound on or off">🔊</button>
+  </div>
+
+  <div id="fx-layer"></div>
+  <div id="banner" class="banner hidden"></div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/assets-food.js"></script>
+<script src="js/assets-scenes.js"></script>
+<script src="js/assets-characters-a.js"></script>
+<script src="js/assets-characters-b.js"></script>
+<script src="js/assets-raster.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
