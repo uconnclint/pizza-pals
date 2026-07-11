@@ -76,28 +76,8 @@
   };
   G.rasterBase = BASE;
 
-  // ---- warm the cache so art doesn't pop in mid-play ----
-  // scenes + pizza layers + oven first (needed immediately), characters after.
-  function preload(list) {
-    list.forEach(function (src) { var im = new Image(); im.src = BASE + src; });
-  }
-  preload([
-    'scenes/pizza-shop-interior.webp', 'scenes/kitchen.webp', 'scenes/counter-front.webp',
-    'scenes/pizza-oven.webp', 'scenes/oven-door.webp', 'logo/pizza-pals-logo.webp',
-    'food/dough-ball.webp', 'food/pizza-crust.webp', 'food/sauce-layer.webp',
-    'food/cheese-layer.webp', 'food/baked-browning-overlay.webp',
-    'food/pepperoni.webp', 'food/mushroom.webp', 'food/black-olive.webp',
-    'food/green-pepper.webp', 'food/pineapple.webp', 'food/broccoli.webp',
-    'props/serving-tray.webp', 'props/sauce-ladle.webp', 'props/cheese-shaker.webp',
-    'props/gold-sparkle.webp', 'props/coral-heart.webp', 'props/gold-star.webp',
-    'props/pizza-coin.webp'
-  ]);
-  // characters trickle in shortly after so the first paint isn't delayed
-  setTimeout(function () {
-    var chars = [];
-    Object.keys(G.charImg).forEach(function (k) {
-      chars.push(G.charImg[k].smile, G.charImg[k].grin);
-    });
-    preload(chars);
-  }, 400);
+  // NOTE: we deliberately do NOT bulk-preload every image here. Decoding ~44
+  // images into GPU memory at once caused a compositing bug on iPad/Chromebook
+  // where the pizza-making layer sampled the wrong (topping) textures. Images
+  // now load on demand; the few KB each is fast enough over the network.
 })();

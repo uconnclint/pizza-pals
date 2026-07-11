@@ -1,0 +1,10 @@
+# Cloudflare Pages headers
+# Always revalidate the HTML so code/art updates reach devices immediately.
+# CSS/JS are cache-busted with ?v= query strings; WebP images have stable
+# unique names, so they can be cached hard.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/art/*
+  Cache-Control: public, max-age=604800

@@ -112,6 +112,12 @@
     });
     st.screen = name;
     $('hud').classList.toggle('hidden', name === 'title' || name === 'stickers');
+    // The title's floating toppings animate on an infinite loop. Left running
+    // while another screen is up, their GPU-composited textures bled into the
+    // pizza-making area (dough showed stale topping images until first touch).
+    // Fully remove them from the render tree whenever the title isn't showing.
+    var fl = $('title-floaties');
+    if (fl) fl.style.display = (name === 'title') ? '' : 'none';
   }
 
   // ---------- HUD ----------
@@ -372,25 +378,13 @@
     forcePizzaPaint();
   }
 
-  // Some mobile Chromium builds rasterize the kitchen's freshly-built,
-  // opacity-animating pizza layer BEFORE its images finish decoding, then
-  // leave it blank until the layer is invalidated. Decode the layer images
-  // and nudge the layer a few times so it repaints with real content.
+  // Ask the browser to decode the pizza-layer images up front so they are
+  // ready to paint the moment the kitchen screen appears (no blank frame).
   function forcePizzaPaint() {
-    var wrap = $('pizza-wrap');
-    if (!wrap) return;
     var imgs = pizzaBase.querySelectorAll('img');
     imgs.forEach(function (im) {
-      if (im.decode) { try { im.decode().then(nudge).catch(function () {}); } catch (e) {} }
+      if (im.decode) { try { im.decode().catch(function () {}); } catch (e) {} }
     });
-    function nudge() {
-      // a filter change forces the compositor to re-rasterize the layer's
-      // contents (a bare transform only re-composites, which isn't enough)
-      pizzaBase.style.filter = 'opacity(0.999)';
-      requestAnimationFrame(function () { pizzaBase.style.filter = ''; });
-    }
-    // nudge on a short cadence spanning the kitchen screen's fade-in
-    [0, 60, 200, 420, 700].forEach(function (t) { setTimeout(nudge, t); });
   }
 
   function buildPizzaBase() {
