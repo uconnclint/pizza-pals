@@ -19,29 +19,29 @@
 
   // ---- scenes (injected as innerHTML strings) ----
   G.scenes = G.scenes || {};
-  G.scenes.shopBg = img('scenes/pizza-shop-interior.png', 'scene-fill');
-  G.scenes.counter = img('scenes/counter-front.png', 'counter-fill');
-  G.scenes.kitchenBg = img('scenes/kitchen.png', 'scene-fill');
-  G.scenes.logo = img('logo/pizza-pals-logo.png', 'logo-fill');
+  G.scenes.shopBg = img('scenes/pizza-shop-interior.webp', 'scene-fill');
+  G.scenes.counter = img('scenes/counter-front.webp', 'counter-fill');
+  G.scenes.kitchenBg = img('scenes/kitchen.webp', 'scene-fill');
+  G.scenes.logo = img('logo/pizza-pals-logo.webp', 'logo-fill');
 
   // ---- food props (injected as innerHTML strings) ----
   G.food = G.food || {};
-  G.food.tray = img('props/serving-tray.png');
-  G.food.ladle = img('props/sauce-ladle.png');
-  G.food.shaker = img('props/cheese-shaker.png');
-  G.food.sparkle = img('props/gold-sparkle.png');
-  G.food.heart = img('props/coral-heart.png');
-  G.food.star = img('props/gold-star.png');
-  G.food.coin = img('props/pizza-coin.png');
+  G.food.tray = img('props/serving-tray.webp');
+  G.food.ladle = img('props/sauce-ladle.webp');
+  G.food.shaker = img('props/cheese-shaker.webp');
+  G.food.sparkle = img('props/gold-sparkle.webp');
+  G.food.heart = img('props/coral-heart.webp');
+  G.food.star = img('props/gold-star.webp');
+  G.food.coin = img('props/pizza-coin.webp');
 
   // ---- toppings: keep name/emoji, replace the svg with an <img> ----
   var TOP = {
-    pepperoni: 'pepperoni.png',
-    mushroom: 'mushroom.png',
-    olive: 'black-olive.png',
-    pepper: 'green-pepper.png',
-    pineapple: 'pineapple.png',
-    broccoli: 'broccoli.png'
+    pepperoni: 'pepperoni.webp',
+    mushroom: 'mushroom.webp',
+    olive: 'black-olive.webp',
+    pepper: 'green-pepper.webp',
+    pineapple: 'pineapple.webp',
+    broccoli: 'broccoli.webp'
   };
   G.food.toppings = G.food.toppings || {};
   Object.keys(TOP).forEach(function (k) {
@@ -51,28 +51,28 @@
 
   // ---- smart subsystems: paths the game builds custom DOM from ----
   G.pizzaImg = {
-    dough: BASE + 'food/dough-ball.png',
-    crust: BASE + 'food/pizza-crust.png',
-    sauce: BASE + 'food/sauce-layer.png',
-    cheese: BASE + 'food/cheese-layer.png',
-    baked: BASE + 'food/baked-browning-overlay.png'
+    dough: BASE + 'food/dough-ball.webp',
+    crust: BASE + 'food/pizza-crust.webp',
+    sauce: BASE + 'food/sauce-layer.webp',
+    cheese: BASE + 'food/cheese-layer.webp',
+    baked: BASE + 'food/baked-browning-overlay.webp'
   };
   G.ovenImg = {
-    body: BASE + 'scenes/pizza-oven.png',
-    door: BASE + 'scenes/oven-door.png'
+    body: BASE + 'scenes/pizza-oven.webp',
+    door: BASE + 'scenes/oven-door.webp'
   };
   var C = 'characters/';
   G.charImg = {
-    pip: { smile: C + 'pip-smile.png', grin: C + 'pip-grin.png' },
-    barks: { smile: C + 'sir-barksalot-smile.png', grin: C + 'sir-barksalot-grin.png' },
-    beep: { smile: C + 'beep-bop-smile.png', grin: C + 'beep-bop-grin.png' },
-    mo: { smile: C + 'mo-smile.png', grin: C + 'mo-grin.png' },
-    zizzy: { smile: C + 'zizzy-smile.png', grin: C + 'zizzy-grin.png' },
-    whiskers: { smile: C + 'captain-whiskers-smile.png', grin: C + 'captain-whiskers-grin.png' },
-    luna: { smile: C + 'luna-smile.png', grin: C + 'luna-grin.png' },
-    rex: { smile: C + 'rex-smile.png', grin: C + 'rex-grin.png' },
-    penny: { smile: C + 'gran-penny-smile.png', grin: C + 'gran-penny-grin.png' },
-    gus: { smile: C + 'gus-smile.png', grin: C + 'gus-grin.png' }
+    pip: { smile: C + 'pip-smile.webp', grin: C + 'pip-grin.webp' },
+    barks: { smile: C + 'sir-barksalot-smile.webp', grin: C + 'sir-barksalot-grin.webp' },
+    beep: { smile: C + 'beep-bop-smile.webp', grin: C + 'beep-bop-grin.webp' },
+    mo: { smile: C + 'mo-smile.webp', grin: C + 'mo-grin.webp' },
+    zizzy: { smile: C + 'zizzy-smile.webp', grin: C + 'zizzy-grin.webp' },
+    whiskers: { smile: C + 'captain-whiskers-smile.webp', grin: C + 'captain-whiskers-grin.webp' },
+    luna: { smile: C + 'luna-smile.webp', grin: C + 'luna-grin.webp' },
+    rex: { smile: C + 'rex-smile.webp', grin: C + 'rex-grin.webp' },
+    penny: { smile: C + 'gran-penny-smile.webp', grin: C + 'gran-penny-grin.webp' },
+    gus: { smile: C + 'gus-smile.webp', grin: C + 'gus-grin.webp' }
   };
   G.rasterBase = BASE;
 
@@ -82,15 +82,15 @@
     list.forEach(function (src) { var im = new Image(); im.src = BASE + src; });
   }
   preload([
-    'scenes/pizza-shop-interior.png', 'scenes/kitchen.png', 'scenes/counter-front.png',
-    'scenes/pizza-oven.png', 'scenes/oven-door.png', 'logo/pizza-pals-logo.png',
-    'food/dough-ball.png', 'food/pizza-crust.png', 'food/sauce-layer.png',
-    'food/cheese-layer.png', 'food/baked-browning-overlay.png',
-    'food/pepperoni.png', 'food/mushroom.png', 'food/black-olive.png',
-    'food/green-pepper.png', 'food/pineapple.png', 'food/broccoli.png',
-    'props/serving-tray.png', 'props/sauce-ladle.png', 'props/cheese-shaker.png',
-    'props/gold-sparkle.png', 'props/coral-heart.png', 'props/gold-star.png',
-    'props/pizza-coin.png'
+    'scenes/pizza-shop-interior.webp', 'scenes/kitchen.webp', 'scenes/counter-front.webp',
+    'scenes/pizza-oven.webp', 'scenes/oven-door.webp', 'logo/pizza-pals-logo.webp',
+    'food/dough-ball.webp', 'food/pizza-crust.webp', 'food/sauce-layer.webp',
+    'food/cheese-layer.webp', 'food/baked-browning-overlay.webp',
+    'food/pepperoni.webp', 'food/mushroom.webp', 'food/black-olive.webp',
+    'food/green-pepper.webp', 'food/pineapple.webp', 'food/broccoli.webp',
+    'props/serving-tray.webp', 'props/sauce-ladle.webp', 'props/cheese-shaker.webp',
+    'props/gold-sparkle.webp', 'props/coral-heart.webp', 'props/gold-star.webp',
+    'props/pizza-coin.webp'
   ]);
   // characters trickle in shortly after so the first paint isn't delayed
   setTimeout(function () {

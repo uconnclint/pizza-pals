@@ -369,6 +369,28 @@
     buildPizzaBase();
     renderOrderStrip();
     setStep('dough');
+    forcePizzaPaint();
+  }
+
+  // Some mobile Chromium builds rasterize the kitchen's freshly-built,
+  // opacity-animating pizza layer BEFORE its images finish decoding, then
+  // leave it blank until the layer is invalidated. Decode the layer images
+  // and nudge the layer a few times so it repaints with real content.
+  function forcePizzaPaint() {
+    var wrap = $('pizza-wrap');
+    if (!wrap) return;
+    var imgs = pizzaBase.querySelectorAll('img');
+    imgs.forEach(function (im) {
+      if (im.decode) { try { im.decode().then(nudge).catch(function () {}); } catch (e) {} }
+    });
+    function nudge() {
+      // a filter change forces the compositor to re-rasterize the layer's
+      // contents (a bare transform only re-composites, which isn't enough)
+      pizzaBase.style.filter = 'opacity(0.999)';
+      requestAnimationFrame(function () { pizzaBase.style.filter = ''; });
+    }
+    // nudge on a short cadence spanning the kitchen screen's fade-in
+    [0, 60, 200, 420, 700].forEach(function (t) { setTimeout(nudge, t); });
   }
 
   function buildPizzaBase() {
