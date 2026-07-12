@@ -74,7 +74,7 @@
 
   // ---------- persistence ----------
   var SAVE_KEY = 'pizzaPals.save.v1';
-  var save = { coins: 0, served: 0, stickers: {}, muted: false };
+  var save = { coins: 0, served: 0, sandboxMade: 0, stickers: {}, muted: false };
   try {
     var raw = localStorage.getItem(SAVE_KEY);
     if (raw) { var s = JSON.parse(raw); if (s && typeof s === 'object') Object.assign(save, s); }
@@ -94,6 +94,7 @@
     sauceProgress: 0,
     cheeseTaps: 0,
     baking: false,
+    sandbox: false,
     lastCustomer: null
   };
 
@@ -127,9 +128,10 @@
   }
 
   // ---------- HUD ----------
+  function totalPizzas() { return save.served + (save.sandboxMade || 0); }
   function refreshHud() {
     $('coin-count').textContent = save.coins;
-    $('served-count').textContent = save.served;
+    $('served-count').textContent = totalPizzas();
     var ic = save.muted ? '🔇' : '🔊';
     $('btn-sound').textContent = ic;
     $('btn-sound-title').textContent = ic;
@@ -361,6 +363,14 @@
   var pizzaTops = $('pizza-toppings');
   var toolCursor = $('tool-cursor');
 
+  // free-play: no customer, no order — make whatever you like
+  function startSandbox() {
+    st.sandbox = true;
+    st.charKey = null;
+    st.order = null;
+    startKitchen();
+  }
+
   function startKitchen() {
     showScreen('kitchen');
     st.placed = {};
@@ -467,6 +477,11 @@
     var strip = $('kitchen-order');
     var html = '<div class="order-chip" id="chip-sauce"><span style="font-size:26px">🥫</span><span class="check">⬜</span></div>' +
       '<div class="order-chip" id="chip-cheese"><span style="font-size:26px">🧀</span><span class="check">⬜</span></div>';
+    if (st.sandbox || !st.order) {
+      html += '<div class="order-chip" style="font-size:22px">🎨 Your pizza!</div>';
+      strip.innerHTML = html;
+      return;
+    }
     Object.keys(st.order.toppings).forEach(function (k) {
       html += '<div class="order-chip" id="chip-' + k + '">' +
         '<span class="ic">' + topSvg(k) + '</span>' +
@@ -482,7 +497,15 @@
     var cs = $('chip-sauce'), cc = $('chip-cheese');
     if (cs) { cs.classList.toggle('done', sauceDone); cs.querySelector('.check').textContent = sauceDone ? '✅' : '⬜'; }
     if (cc) { cc.classList.toggle('done', cheeseDone); cc.querySelector('.check').textContent = cheeseDone ? '✅' : '⬜'; }
-    if (!st.order) return;
+    if (!st.order) {
+      // free play: once the sauce & cheese are on, you can bake any time
+      if (st.sandbox && st.step === 'toppings') {
+        $('btn-bake').classList.remove('hidden');
+        $('step-hint').textContent = 'Add anything you like — then bake! 🔥';
+        $('step-hint').style.opacity = 1;
+      }
+      return;
+    }
     var allGood = sauceDone && cheeseDone;
     var anyOver = false, anyWrong = false;
     Object.keys(st.order.toppings).forEach(function (k) {
@@ -649,7 +672,7 @@
     bins.innerHTML = '';
     TOPPING_KEYS.forEach(function (k) {
       var b = document.createElement('div');
-      b.className = 'bin' + (st.order.toppings[k] ? ' needed' : '');
+      b.className = 'bin' + (st.order && st.order.toppings[k] ? ' needed' : '');
       b.dataset.key = k;
       b.innerHTML = '<div class="bin-art">' + topSvg(k) + '</div><div class="bin-label">' + topName(k) + '</div>';
       b.addEventListener('pointerdown', function (e) { startDrag(e, k, b); });
@@ -715,15 +738,20 @@
     pizzaTops.appendChild(t);
     st.placed[key] = (st.placed[key] || 0) + 1;
     AU.pop();
-    var need = st.order.toppings[key];
-    if (!need) {
-      speak('Hmm, that is not on the order!', { rate: 1, pitch: 1.1 });
-      AU.sad();
-    } else if (st.placed[key] > need) {
-      speak('That is too many! Tap one to take it off.', { rate: 1, pitch: 1.1 });
-      AU.sad();
-    } else if (st.placed[key] === need) {
-      sparkleAt(clientX, clientY, 6);
+    if (!st.order) {
+      // free play — anything goes, every topping is a happy one
+      sparkleAt(clientX, clientY, 5);
+    } else {
+      var need = st.order.toppings[key];
+      if (!need) {
+        speak('Hmm, that is not on the order!', { rate: 1, pitch: 1.1 });
+        AU.sad();
+      } else if (st.placed[key] > need) {
+        speak('That is too many! Tap one to take it off.', { rate: 1, pitch: 1.1 });
+        AU.sad();
+      } else if (st.placed[key] === need) {
+        sparkleAt(clientX, clientY, 6);
+      }
     }
     updateOrderStrip();
   }
@@ -848,6 +876,7 @@
         ovenPizza.style.transition = 'transform 0.9s cubic-bezier(0.3, 1.2, 0.5, 1)';
         ovenPizza.style.transform = 'translate(-50%, -50%) translateY(8vh) scale(0.9)';
         AU.whoosh();
+        $('btn-serve').textContent = st.sandbox ? 'Make Another! 🍕' : 'Serve it! 🛎️';
         $('btn-serve').classList.remove('hidden');
         label.classList.add('hidden');
       }, 550);
@@ -859,6 +888,20 @@
   }
 
   // ---------- serving ----------
+  // free-play finish: celebrate the creation, then start a fresh one
+  function sandboxServe() {
+    AU.pop(); AU.tada();
+    var pr = $('oven-pizza').getBoundingClientRect();
+    confetti(50);
+    heartsAt(pr.left + pr.width / 2, pr.top + pr.height * 0.4, 5);
+    showBanner('🎉 Yummy pizza! 🎉');
+    coinsFly(10, pr.left + pr.width / 2, pr.top + pr.height / 2);
+    save.sandboxMade = (save.sandboxMade || 0) + 1;
+    persist();
+    refreshHud();
+    speak('Yummy! What a great pizza!', { rate: 1, pitch: 1.2 });
+    setTimeout(startSandbox, 1400);
+  }
   function serve() {
     AU.pop();
     var ovenPizza = $('oven-pizza');
@@ -981,10 +1024,13 @@
       f.style.width = sz + 'px'; f.style.height = sz + 'px';
       fl.appendChild(f);
     }
-    $('title-badge').textContent = save.served > 0 ? '🍕 Pizzas made: ' + save.served : '';
+    var made = totalPizzas();
+    $('title-badge').textContent = made > 0 ? '🍕 Pizzas made: ' + made : '';
   }
   function goTitle() {
     AU.pop();
+    st.sandbox = false;
+    st.baking = false;
     try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
     buildTitle();
     showScreen('title');
@@ -1010,7 +1056,14 @@
       AU.init();
       if (!save.muted) AU.bgmStart();
       AU.pop();
+      st.sandbox = false;
       enterCustomer();
+    });
+    $('btn-sandbox').addEventListener('click', function () {
+      AU.init();
+      if (!save.muted) AU.bgmStart();
+      AU.pop();
+      startSandbox();
     });
     $('btn-stickers').addEventListener('click', function () { AU.init(); openStickers(); });
     $('btn-stickers-back').addEventListener('click', goTitle);
@@ -1020,7 +1073,7 @@
     $('btn-make').addEventListener('click', function () { AU.pop(); startKitchen(); });
     $('btn-hear').addEventListener('click', function () { AU.pop(); speakOrder(); });
     $('btn-bake').addEventListener('click', startBake);
-    $('btn-serve').addEventListener('click', serve);
+    $('btn-serve').addEventListener('click', function () { if (st.sandbox) sandboxServe(); else serve(); });
     $('btn-next').addEventListener('click', nextCustomer);
 
     // iOS: block pinch zoom & double-tap zoom leftovers
