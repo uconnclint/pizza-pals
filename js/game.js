@@ -37,8 +37,9 @@
   }
   function topNameFor(key, count) {
     var name = topName(key);
-    // "1 olive" / "3 olives" — only these names take a plural s
+    // Normalize asset labels for natural order sentences.
     if (count === 1 && /^(olives|mushrooms|peppers)$/.test(name)) return name.slice(0, -1);
+    if (count !== 1 && name === 'pineapple') return 'pineapples';
     return name;
   }
   function rnd(n) { return Math.floor(Math.random() * n); }
@@ -60,7 +61,10 @@
   }
   function characterHTML(ch, key) {
     if (RASTER && A.charImg && A.charImg[key]) {
-      return charImgTag(key, 'smile') + charImgTag(key, 'grin', ' style="display:none"');
+      var c = A.charImg[key];
+      return '<img class="char-img char-face" src="' + A.rasterBase + c.smile +
+        '" data-smile="' + A.rasterBase + c.smile + '" data-grin="' + A.rasterBase + c.grin +
+        '" alt="" draggable="false">';
     }
     return (ch && ch.svg) || '';
   }
@@ -74,11 +78,20 @@
 
   // ---------- persistence ----------
   var SAVE_KEY = 'pizzaPals.save.v1';
-  var save = { coins: 0, served: 0, sandboxMade: 0, stickers: {}, muted: false };
+  var save = {
+    coins: 0, served: 0, sandboxMade: 0, stickers: {}, muted: false,
+    tutorialSeen: false,
+    settings: { difficulty: 1, instructionMode: 'both', memory: false, hints: true, quickPrep: true, timer: false, reducedMotion: false },
+    stats: { orders: 0, firstTry: 0, mistakes: 0, replays: 0, toppingsPlaced: 0, bestLevel: 0, totalSeconds: 0 },
+    unlocks: { classic: true }, theme: 'classic'
+  };
   try {
     var raw = localStorage.getItem(SAVE_KEY);
     if (raw) { var s = JSON.parse(raw); if (s && typeof s === 'object') Object.assign(save, s); }
   } catch (e) {}
+  save.settings = Object.assign({ difficulty: 1, instructionMode: 'both', memory: false, hints: true, quickPrep: true, timer: false, reducedMotion: false }, save.settings || {});
+  save.stats = Object.assign({ orders: 0, firstTry: 0, mistakes: 0, replays: 0, toppingsPlaced: 0, bestLevel: 0, totalSeconds: 0 }, save.stats || {});
+  save.unlocks = Object.assign({ classic: true }, save.unlocks || {});
   function persist() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {}
   }
@@ -95,21 +108,54 @@
     cheeseTaps: 0,
     baking: false,
     sandbox: false,
-    lastCustomer: null
+    lastCustomer: null,
+    placements: [],
+    orderMistakes: 0,
+    orderReplays: 0,
+    orderStartedAt: 0,
+    selectedBin: null,
+    pendingAfterTutorial: null,
+    timerId: null
   };
 
-  // ---------- speech ----------
-  function speak(text, voice) {
-    if (save.muted) return;
-    try {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.rate = (voice && voice.rate) || 1;
-      u.pitch = (voice && voice.pitch) || 1.1;
-      u.lang = 'en-US';
-      window.speechSynthesis.speak(u);
-    } catch (e) {}
+  // ---------- voice (ElevenLabs clips, one per character + a narrator) ----------
+  var GV = window.GameVoice || { play: function () {}, seq: function () {}, stop: function () {}, setMuted: function () {}, preload: function () {}, unlock: function () {} };
+  var SINGULAR = { mushroom: 1, olive: 1, pepper: 1 };
+  function vplay(url) { if (!save.muted) GV.play(url); }
+  function vseq(urls) { if (!save.muted && urls && urls.length) GV.seq(urls); }
+  // build the clip sequence that reads an order aloud (matches orderSentence)
+  function orderClips(charKey, order) {
+    var seq = [charKey + '/ordercall.mp3', 'narrator/pizza-base.mp3'];
+    if (order.sauce === false) seq.push('narrator/no.mp3');
+    seq.push('narrator/sauce.mp3');
+    if (order.cheese === false) seq.push('narrator/no.mp3');
+    seq.push('narrator/cheese.mp3');
+    Object.keys(order.toppings).forEach(function (k) {
+      var n = order.toppings[k];
+      seq.push('narrator/num-' + Math.max(1, Math.min(6, n)) + '.mp3');
+      seq.push('narrator/top-' + k + (n === 1 && SINGULAR[k] ? '-1' : '') + '.mp3');
+      if (order.zones && order.zones[k]) seq.push('narrator/on-' + order.zones[k] + '.mp3');
+    });
+    if (order.forbidden) { seq.push('narrator/no.mp3'); seq.push('narrator/top-' + order.forbidden + '.mp3'); }
+    return seq;
+  }
+  // legacy no-op — every spoken line now routes through GameVoice clips
+  function speak() {}
+
+  function announce(text) {
+    var el = $('sr-status');
+    if (!el) return;
+    el.textContent = '';
+    setTimeout(function () { el.textContent = text; }, 20);
+  }
+  function difficulty() { return Math.max(1, Math.min(4, Number(save.settings.difficulty) || 1)); }
+  function memoryMode() { return !!save.settings.memory || difficulty() >= 3; }
+  function showHints() { return !!save.settings.hints && difficulty() < 4; }
+  function applyPreferences() {
+    document.body.classList.toggle('reduce-motion', !!save.settings.reducedMotion);
+    document.body.classList.remove('theme-sunshine', 'theme-space', 'theme-rainbow');
+    if (save.theme && save.theme !== 'classic') document.body.classList.add('theme-' + save.theme);
+    $('hud-level').textContent = 'Level ' + difficulty();
   }
 
   // ---------- screens ----------
@@ -135,11 +181,16 @@
     var ic = save.muted ? '🔇' : '🔊';
     $('btn-sound').textContent = ic;
     $('btn-sound-title').textContent = ic;
+    $('hud-coins').setAttribute('aria-label', save.coins + ' coins. Open reward shop.');
+    $('hud-served').setAttribute('aria-label', totalPizzas() + ' pizzas made.');
+    $('hud-level').textContent = 'Level ' + difficulty();
+    if ($('shop-coins')) $('shop-coins').textContent = save.coins;
   }
   function toggleSound() {
     save.muted = !save.muted;
     AU.setMuted(save.muted);
-    if (save.muted) { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
+    GV.setMuted(save.muted);
+    if (save.muted) { GV.stop(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
     else { AU.bgmStart(); AU.pop(); }
     persist();
     refreshHud();
@@ -250,19 +301,21 @@
     return pick(fresh.length && Math.random() < 0.7 ? fresh : options);
   }
   function makeOrder() {
-    var served = save.served;
-    var nTypes, maxCount;
-    if (served < 3) { nTypes = 1; maxCount = 3; }
-    else if (served < 7) { nTypes = 1 + rnd(2); maxCount = 4; }
-    else if (served < 15) { nTypes = 2; maxCount = 5; }
-    else { nTypes = 2 + rnd(2); maxCount = 6; }
+    var level = difficulty();
+    var nTypes = level === 1 ? 1 : (level === 2 ? 1 + rnd(2) : (level === 3 ? 2 : 2 + rnd(2)));
+    var maxCount = [0, 3, 4, 4, 5][level];
     var keys = TOPPING_KEYS.slice();
     var chosen = {};
+    var zones = {};
     for (var i = 0; i < nTypes; i++) {
       var k = keys.splice(rnd(keys.length), 1)[0];
       chosen[k] = 1 + rnd(maxCount);
+      if (level >= 4) zones[k] = pick(['left', 'right']);
     }
-    return { toppings: chosen };
+    var sauce = level === 1 ? true : Math.random() < 0.72;
+    var cheese = level === 1 ? true : Math.random() < 0.72;
+    var forbidden = level >= 4 && keys.length ? keys.splice(rnd(keys.length), 1)[0] : null;
+    return { toppings: chosen, sauce: sauce, cheese: cheese, zones: zones, forbidden: forbidden, level: level };
   }
   function orderPhrases(order) {
     return Object.keys(order.toppings).map(function (k) {
@@ -270,29 +323,42 @@
     });
   }
   function orderSentence(order) {
-    var parts = orderPhrases(order);
-    var list = parts.length > 1
-      ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1]
-      : parts[0];
-    return 'a cheese pizza with ' + list;
+    var base = [];
+    base.push(order.sauce === false ? 'no sauce' : 'sauce');
+    base.push(order.cheese === false ? 'no cheese' : 'cheese');
+    var toppingText = Object.keys(order.toppings).map(function (k) {
+      var text = order.toppings[k] + ' ' + topNameFor(k, order.toppings[k]);
+      return order.zones && order.zones[k] ? text + ' on the ' + order.zones[k] : text;
+    });
+    var all = base.concat(toppingText);
+    if (order.forbidden) all.push('no ' + topName(order.forbidden));
+    var joined = all.length > 1 ? all.slice(0, -1).join(', ') + ' and ' + all[all.length - 1] : all[0];
+    return 'a pizza with ' + joined;
   }
   function renderOrderCard(el, order) {
-    var html = '';
+    var html = '<div class="order-rule">' + (order.sauce === false ? '🚫 No sauce' : '🥫 Sauce') +
+      ' &nbsp; ' + (order.cheese === false ? '🚫 No cheese' : '🧀 Cheese') + '</div>';
     Object.keys(order.toppings).forEach(function (k) {
       var n = order.toppings[k];
       var minis = '';
       for (var i = 0; i < n; i++) minis += '<span class="ic">' + topSvg(k) + '</span>';
       html += '<div class="order-line"><span class="num">' + n + '</span>' +
         '<span class="ic">' + topSvg(k) + '</span>' +
-        '<span style="font-size:20px">→</span><span class="minis">' + minis + '</span></div>';
+        '<span style="font-size:20px">→</span><span class="minis">' + minis + '</span>' +
+        (order.zones && order.zones[k] ? '<span class="order-rule">' + (order.zones[k] === 'left' ? '⬅️ left' : 'right ➡️') + '</span>' : '') + '</div>';
     });
+    if (order.forbidden) html += '<div class="order-line forbidden"><span class="num">✕</span><span class="ic">' + topSvg(order.forbidden) + '</span><span>No ' + topName(order.forbidden) + '</span></div>';
     el.innerHTML = html;
   }
-  function speakOrder() {
+  function speakOrder(replay) {
     var ch = A.characters[st.charKey];
     if (!ch || !st.order) return;
-    var line = pick(ch.orderLines || ['I would like {ORDER}, please!']);
-    speak(line.replace('{ORDER}', orderSentence(st.order)), ch.voice);
+    if (replay) {
+      st.orderReplays++;
+      save.stats.replays++;
+      persist();
+    }
+    vseq(orderClips(st.charKey, st.order));
   }
 
   // ---------- counter scene ----------
@@ -301,6 +367,11 @@
     st.charKey = pickCustomer();
     st.lastCustomer = st.charKey;
     st.order = makeOrder();
+    st.orderMistakes = 0;
+    st.orderReplays = 0;
+    st.orderStartedAt = Date.now();
+    GV.preload([st.charKey + '/greeting-0.mp3', st.charKey + '/greeting-1.mp3', st.charKey + '/greeting-2.mp3',
+      st.charKey + '/ordercall.mp3', 'narrator/pizza-base.mp3']);
     var ch = A.characters[st.charKey] || { name: '???', svg: '', greetings: ['Hello!'], voice: {} };
 
     var art = $('customer-art');
@@ -308,6 +379,7 @@
     art.innerHTML = characterHTML(ch, st.charKey);
     setMouth(art, false);
     $('speech-bubble').classList.add('hidden');
+    $('speech-feedback').classList.add('hidden');
     $('btn-make').classList.add('hidden');
     $('btn-next').classList.add('hidden');
     $('serve-tray').classList.add('hidden');
@@ -325,26 +397,39 @@
   }
   function greet(ch) {
     var bubble = $('speech-bubble');
-    var greeting = pick(ch.greetings || ['Hello!']);
-    $('speech-text').textContent = greeting;
+    var greets = ch.greetings || ['Hello!'];
+    var gi = rnd(greets.length);
+    $('speech-text').textContent = greets[gi];
     $('speech-order').classList.add('hidden');
     $('btn-hear').classList.add('hidden');
     bubble.classList.remove('hidden');
-    speak(greeting, ch.voice);
+    vplay(st.charKey + '/greeting-' + gi + '.mp3');
     setTimeout(function () { showOrder(ch); }, 1900);
   }
   function showOrder(ch) {
     if (st.screen !== 'counter' || !st.order) return;
     var line = pick(ch.orderLines || ['I would like {ORDER}, please!']);
-    $('speech-text').textContent = line.replace('{ORDER}', orderSentence(st.order) + ' 🍕');
+    line = line.replace(/\b(?:your|some) \{ORDER\}/i, '{ORDER}');
+    var mode = save.settings.instructionMode || 'both';
+    $('speech-text').textContent = mode === 'listen' ? '👂 Listen carefully to my order!' : line.replace('{ORDER}', orderSentence(st.order) + ' 🍕');
     renderOrderCard($('speech-order'), st.order);
-    $('speech-order').classList.remove('hidden');
-    $('btn-hear').classList.remove('hidden');
+    $('speech-order').classList.toggle('memory-ready', memoryMode());
+    $('speech-order').classList.toggle('hidden', mode === 'listen');
+    $('btn-hear').classList.toggle('hidden', mode === 'read');
     $('btn-make').classList.remove('hidden');
-    speakOrder();
+    if (mode !== 'read') speakOrder(false);
   }
   function setMouth(rootEl, happy) {
-    // raster characters: swap the smile / grin images
+    // Raster characters use one image element and swap its source. Keeping two
+    // large transparent WebP layers stacked triggered black texture blocks on
+    // some Chromebook/iPad GPUs during the happy-face transition.
+    var face = rootEl.querySelector('.char-face');
+    if (face) {
+      var target = happy ? face.dataset.grin : face.dataset.smile;
+      if (target && face.getAttribute('src') !== target) face.setAttribute('src', target);
+      return;
+    }
+    // compatibility with older cached markup
     var smile = rootEl.querySelector('.char-smile');
     var grin = rootEl.querySelector('.char-happy');
     if (smile && grin) {
@@ -371,9 +456,27 @@
     startKitchen();
   }
 
+  function stopOrderTimer() {
+    if (st.timerId) clearInterval(st.timerId);
+    st.timerId = null;
+    $('order-timer').classList.add('hidden');
+  }
+  function startOrderTimer() {
+    stopOrderTimer();
+    if (st.sandbox || !save.settings.timer) return;
+    var el = $('order-timer');
+    el.classList.remove('hidden');
+    function tickTimer() {
+      var seconds = Math.max(0, Math.floor((Date.now() - st.orderStartedAt) / 1000));
+      el.textContent = '⏱ ' + Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+    }
+    tickTimer(); st.timerId = setInterval(tickTimer, 1000);
+  }
+
   function startKitchen() {
     showScreen('kitchen');
     st.placed = {};
+    st.placements = [];
     st.step = 'dough';
     st.doughTaps = 0;
     st.sauceProgress = 0;
@@ -384,14 +487,34 @@
     $('oven-overlay').classList.remove('door-open');
     $('btn-bake').classList.add('hidden');
     $('topping-bins').classList.add('hidden');
+    $('base-choices').classList.add('hidden');
     toolCursor.classList.add('hidden');
     pizzaTops.innerHTML = '';
     $('pizza-wrap').style.visibility = '';
 
     buildPizzaBase();
     renderOrderStrip();
-    setStep('dough');
+    if (!st.sandbox && save.settings.quickPrep && save.served >= 3) quickPrepareBase();
+    else setStep('dough');
     forcePizzaPaint();
+    startOrderTimer();
+  }
+
+  function quickPrepareBase() {
+    var ball = $('dough-ball');
+    if (ball) ball.style.display = 'none';
+    var crust = document.getElementById('pz-crust');
+    if (crust) crust.style.display = '';
+    if (!st.order || st.order.sauce !== false) {
+      var clip = document.getElementById('pz-clip-c');
+      if (clip) clip.setAttribute('r', 106);
+    }
+    if (!st.order || st.order.cheese !== false) {
+      var cheese = document.getElementById('pz-cheese');
+      if (cheese) cheese.setAttribute('opacity', 1);
+    }
+    showBanner('⚡ Base prepared — focus on the order!');
+    setStep('toppings');
   }
 
   // The pizza base renders as inline SVG (vectors), which paints reliably on
@@ -441,6 +564,7 @@
   };
   function setStep(step) {
     st.step = step;
+    $('base-choices').classList.add('hidden');
     var hint = $('step-hint');
     hint.textContent = stepHints[step] || '';
     hint.style.opacity = stepHints[step] ? 1 : 0;
@@ -462,24 +586,74 @@
       buildBins();
       $('topping-bins').classList.remove('hidden');
     }
-    var voiceHints = {
-      dough: 'Tap the dough to pat it flat!',
-      sauce: 'Rub the sauce all around!',
-      cheese: 'Tap the pizza to shake on cheese!',
-      toppings: 'Now drag on the toppings!'
-    };
-    if (voiceHints[step]) speak(voiceHints[step], { rate: 1, pitch: 1.15 });
+    if (['dough', 'sauce', 'cheese', 'toppings'].indexOf(step) >= 0) {
+      vplay('narrator/' + (step === 'toppings' && st.sandbox ? 'hint-sandbox' : 'hint-' + step) + '.mp3');
+    }
+    pizzaZone.setAttribute('aria-label', (stepHints[step] || 'Pizza work area') + ' Press Enter or Space for a keyboard-friendly action.');
+    announce(stepHints[step] || 'Pizza step complete');
+    updateOrderStrip();
+  }
+
+  function askBaseChoice(kind) {
+    st.step = 'choose-' + kind;
+    toolCursor.classList.add('hidden');
+    var isSauce = kind === 'sauce';
+    var expected = isSauce ? st.order.sauce !== false : st.order.cheese !== false;
+    var label = isSauce ? 'sauce' : 'cheese';
+    var hint = $('step-hint');
+    hint.textContent = 'What did the customer say about ' + label + '? 🧠';
+    hint.style.opacity = 1;
+    var choices = [
+      { yes: true, text: isSauce ? '🥫 Add sauce' : '🧀 Add cheese' },
+      { yes: false, text: isSauce ? '🚫 No sauce' : '🚫 No cheese' }
+    ];
+    if (Math.random() < 0.5) choices.reverse();
+    var box = $('base-choices');
+    box.innerHTML = '';
+    choices.forEach(function (choice) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'choice-btn'; b.textContent = choice.text;
+      b.addEventListener('click', function () {
+        if (choice.yes !== expected) {
+          st.orderMistakes++; save.stats.mistakes++; persist(); AU.sad();
+          hint.textContent = 'Check the order again. You can do it! 🔊';
+          announce(hint.textContent);
+          return;
+        }
+        AU.pop(); box.classList.add('hidden');
+        if (isSauce) {
+          if (choice.yes) setStep('sauce');
+          else askBaseChoice('cheese');
+        } else {
+          if (choice.yes) setStep('cheese');
+          else setStep('toppings');
+        }
+      });
+      box.appendChild(b);
+    });
+    box.classList.remove('hidden');
+    pizzaZone.setAttribute('aria-label', 'Choose the requested ' + label + ' using the buttons below.');
+    announce(hint.textContent);
     updateOrderStrip();
   }
 
   // ----- order strip (live checklist) -----
   function renderOrderStrip() {
     var strip = $('kitchen-order');
-    var html = '<div class="order-chip" id="chip-sauce"><span style="font-size:26px">🥫</span><span class="check">⬜</span></div>' +
-      '<div class="order-chip" id="chip-cheese"><span style="font-size:26px">🧀</span><span class="check">⬜</span></div>';
+    var noSauce = st.order && st.order.sauce === false;
+    var noCheese = st.order && st.order.cheese === false;
+    var html = '<div class="order-chip" id="chip-sauce"><span style="font-size:22px">' + (noSauce ? '🚫🥫' : '🥫') + '</span><span class="check">⬜</span></div>' +
+      '<div class="order-chip" id="chip-cheese"><span style="font-size:22px">' + (noCheese ? '🚫🧀' : '🧀') + '</span><span class="check">⬜</span></div>';
     if (st.sandbox || !st.order) {
       html += '<div class="order-chip" style="font-size:22px">🎨 Your pizza!</div>';
       strip.innerHTML = html;
+      return;
+    }
+    if (memoryMode()) {
+      html = '<div class="order-chip" style="font-size:19px">🧠 Remember the order</div>' +
+        (save.settings.instructionMode === 'read' ? '' : '<button class="hear-btn" id="btn-hear-kitchen" style="margin:0" aria-label="Hear the order again">🔊</button>');
+      strip.innerHTML = html;
+      if ($('btn-hear-kitchen')) $('btn-hear-kitchen').addEventListener('click', function () { AU.pop(); speakOrder(true); });
       return;
     }
     Object.keys(st.order.toppings).forEach(function (k) {
@@ -487,12 +661,12 @@
         '<span class="ic">' + topSvg(k) + '</span>' +
         '<span class="count" id="count-' + k + '">0/' + st.order.toppings[k] + '</span></div>';
     });
-    html += '<button class="hear-btn" id="btn-hear-kitchen" style="margin:0" aria-label="Hear the order">🔊</button>';
+    if (save.settings.instructionMode !== 'read') html += '<button class="hear-btn" id="btn-hear-kitchen" style="margin:0" aria-label="Hear the order">🔊</button>';
     strip.innerHTML = html;
-    $('btn-hear-kitchen').addEventListener('click', function () { AU.pop(); speakOrder(); });
+    if ($('btn-hear-kitchen')) $('btn-hear-kitchen').addEventListener('click', function () { AU.pop(); speakOrder(true); });
   }
   function updateOrderStrip() {
-    var sauceDone = ['cheese', 'toppings', 'bake'].indexOf(st.step) >= 0;
+    var sauceDone = ['choose-cheese', 'cheese', 'toppings', 'bake'].indexOf(st.step) >= 0;
     var cheeseDone = ['toppings', 'bake'].indexOf(st.step) >= 0;
     var cs = $('chip-sauce'), cc = $('chip-cheese');
     if (cs) { cs.classList.toggle('done', sauceDone); cs.querySelector('.check').textContent = sauceDone ? '✅' : '⬜'; }
@@ -507,7 +681,7 @@
       return;
     }
     var allGood = sauceDone && cheeseDone;
-    var anyOver = false, anyWrong = false;
+    var anyOver = false, anyWrong = false, anyPosition = false;
     Object.keys(st.order.toppings).forEach(function (k) {
       var need = st.order.toppings[k];
       var have = st.placed[k] || 0;
@@ -520,6 +694,7 @@
       }
       if (have > need) anyOver = true;
       if (have !== need) allGood = false;
+      if (orderPositionWrong(k)) { allGood = false; anyPosition = true; }
     });
     // any topping placed that isn't in the order?
     Object.keys(st.placed).forEach(function (k) {
@@ -530,10 +705,18 @@
       var hint = $('step-hint');
       if (allGood) hint.textContent = 'Perfect! Time to bake! 🔥';
       else if (anyOver) hint.textContent = 'Too many! Tap one to take it off. 👆';
+      else if (anyPosition) hint.textContent = 'Check the left and right placement. ⬅️➡️';
       else if (anyWrong) hint.textContent = 'Tap the extra one to take it off! 👆';
       else hint.textContent = stepHints.toppings;
       hint.style.opacity = 1;
+      announce(hint.textContent);
     }
+  }
+
+  function orderPositionWrong(key) {
+    if (!st.order || !st.order.zones || !st.order.zones[key]) return false;
+    var expected = st.order.zones[key];
+    return st.placements.some(function (p) { return p.key === key && p.side !== expected; });
   }
 
   // ----- geometry -----
@@ -576,7 +759,10 @@
         AU.pop();
         var r = zoneRect();
         sparkleAt(r.left + r.width / 2, r.top + r.height / 2, 12);
-        setTimeout(function () { setStep('sauce'); }, 500);
+        setTimeout(function () {
+          if (!st.sandbox && st.order && difficulty() >= 2) askBaseChoice('sauce');
+          else setStep('sauce');
+        }, 500);
       }, 250);
     }
   }
@@ -609,7 +795,10 @@
         st.sauceProgress = 1;
         AU.pop();
         sparkleAt(x, y, 10);
-        setTimeout(function () { setStep('cheese'); }, 450);
+        setTimeout(function () {
+          if (!st.sandbox && st.order && difficulty() >= 2) askBaseChoice('cheese');
+          else setStep('cheese');
+        }, 450);
       }
     }
     lastSauce = { x: x, y: y };
@@ -665,17 +854,46 @@
   });
   pizzaZone.addEventListener('pointerup', function () { saucing = false; lastSauce = null; });
   pizzaZone.addEventListener('pointercancel', function () { saucing = false; lastSauce = null; });
+  pizzaZone.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    var r = zoneRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    if (st.step === 'dough') tapDough(x, y);
+    else if (st.step === 'cheese') tapCheese(x, y);
+    else if (st.step === 'sauce') {
+      st.sauceProgress = 1;
+      var clip = document.getElementById('pz-clip-c');
+      if (clip) clip.setAttribute('r', 106);
+      AU.splat(); sparkleAt(x, y, 8);
+      setTimeout(function () {
+        if (!st.sandbox && st.order && difficulty() >= 2) askBaseChoice('cheese');
+        else setStep('cheese');
+      }, 250);
+    }
+  });
 
   // ----- topping bins & dragging -----
   function buildBins() {
     var bins = $('topping-bins');
     bins.innerHTML = '';
     TOPPING_KEYS.forEach(function (k) {
-      var b = document.createElement('div');
-      b.className = 'bin' + (st.order && st.order.toppings[k] ? ' needed' : '');
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bin' + (showHints() && st.order && st.order.toppings[k] ? ' needed' : '');
       b.dataset.key = k;
+      b.setAttribute('aria-label', 'Add ' + topName(k) + '. Tap to add or drag onto the pizza.');
       b.innerHTML = '<div class="bin-art">' + topSvg(k) + '</div><div class="bin-label">' + topName(k) + '</div>';
       b.addEventListener('pointerdown', function (e) { startDrag(e, k, b); });
+      b.addEventListener('click', function () {
+        if (b.dataset.suppressClick === '1') return;
+        var r = zoneRect();
+        var count = st.placed[k] || 0;
+        var expected = st.order && st.order.zones && st.order.zones[k];
+        var sideNudge = expected === 'left' ? -0.18 : (expected === 'right' ? 0.18 : 0);
+        var x = r.left + r.width * (0.5 + sideNudge + ((count % 2) ? 0.05 : -0.03));
+        var y = r.top + r.height * (0.45 + ((count % 3) - 1) * 0.12);
+        placeTopping(k, x, y);
+      });
       bins.appendChild(b);
     });
   }
@@ -691,13 +909,14 @@
     d.style.left = e.clientX + 'px';
     d.style.top = e.clientY + 'px';
     document.body.appendChild(d);
-    drag = { key: key, el: d, bin: binEl };
+    drag = { key: key, el: d, bin: binEl, startX: e.clientX, startY: e.clientY, moved: false };
     window.addEventListener('pointermove', dragMove);
     window.addEventListener('pointerup', dragEnd);
     window.addEventListener('pointercancel', dragEnd);
   }
   function dragMove(e) {
     if (!drag) return;
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 8) drag.moved = true;
     drag.el.style.left = e.clientX + 'px';
     drag.el.style.top = e.clientY + 'px';
   }
@@ -707,6 +926,10 @@
     window.removeEventListener('pointercancel', dragEnd);
     if (!drag) return;
     var d = drag; drag = null;
+    if (d.moved) {
+      d.bin.dataset.suppressClick = '1';
+      setTimeout(function () { delete d.bin.dataset.suppressClick; }, 80);
+    }
     if (onPizza(e.clientX, e.clientY, 0.38)) {
       placeTopping(d.key, e.clientX, e.clientY);
       d.el.remove();
@@ -730,13 +953,26 @@
     t.style.top = py + '%';
     t.innerHTML = topSvg(key);
     t.dataset.key = key;
+    var side = px < 50 ? 'left' : 'right';
+    t.setAttribute('role', 'button');
+    t.setAttribute('tabindex', '0');
+    t.setAttribute('aria-label', topName(key) + ' on the ' + side + '. Press Enter to remove.');
     t.addEventListener('pointerdown', function (e) {
       if (st.step !== 'toppings' || st.baking) return;
       e.stopPropagation();
       removeTopping(t, key, e.clientX, e.clientY);
     });
+    t.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        var rr = t.getBoundingClientRect();
+        removeTopping(t, key, rr.left + rr.width / 2, rr.top + rr.height / 2);
+      }
+    });
     pizzaTops.appendChild(t);
     st.placed[key] = (st.placed[key] || 0) + 1;
+    st.placements.push({ el: t, key: key, side: side });
+    save.stats.toppingsPlaced++;
     AU.pop();
     if (!st.order) {
       // free play — anything goes, every topping is a happy one
@@ -744,19 +980,27 @@
     } else {
       var need = st.order.toppings[key];
       if (!need) {
-        speak('Hmm, that is not on the order!', { rate: 1, pitch: 1.1 });
+        st.orderMistakes++; save.stats.mistakes++;
+        vplay('narrator/warn-wrong.mp3');
         AU.sad();
       } else if (st.placed[key] > need) {
-        speak('That is too many! Tap one to take it off.', { rate: 1, pitch: 1.1 });
+        st.orderMistakes++; save.stats.mistakes++;
+        vplay('narrator/warn-many.mp3');
+        AU.sad();
+      } else if (st.order.zones && st.order.zones[key] && st.order.zones[key] !== side) {
+        st.orderMistakes++; save.stats.mistakes++;
+        vplay('narrator/warn-side.mp3');
         AU.sad();
       } else if (st.placed[key] === need) {
         sparkleAt(clientX, clientY, 6);
       }
     }
     updateOrderStrip();
+    persist();
   }
   function removeTopping(el, key, x, y) {
     st.placed[key] = Math.max(0, (st.placed[key] || 0) - 1);
+    st.placements = st.placements.filter(function (p) { return p.el !== el; });
     AU.whoosh();
     particleBurst(x, y, '💨', 3, 40);
     el.remove();
@@ -899,7 +1143,7 @@
     save.sandboxMade = (save.sandboxMade || 0) + 1;
     persist();
     refreshHud();
-    speak('Yummy! What a great pizza!', { rate: 1, pitch: 1.2 });
+    vplay('narrator/cheer-yummy.mp3');
     setTimeout(startSandbox, 1400);
   }
   function serve() {
@@ -940,27 +1184,48 @@
       AU.tada();
       art.classList.remove('eating');
       art.classList.add('idle');
-      var line = pick(ch.happyLines || ['Yummy! Thank you!']);
-      $('speech-text').textContent = line;
+      var happies = ch.happyLines || ['Yummy! Thank you!'];
+      var hi = rnd(happies.length);
+      $('speech-text').textContent = happies[hi];
       $('speech-order').classList.add('hidden');
       $('btn-hear').classList.add('hidden');
       $('speech-bubble').classList.remove('hidden');
-      speak(line, ch.voice);
+      vplay(st.charKey + '/happy-' + hi + '.mp3');
       rewardAndContinue();
     }, 1500);
   }
   function rewardAndContinue() {
+    stopOrderTimer();
+    var elapsedSeconds = Math.max(1, Math.round((Date.now() - st.orderStartedAt) / 1000));
     var toppingCount = 0;
     Object.keys(st.order.toppings).forEach(function (k) { toppingCount += st.order.toppings[k]; });
-    var earned = 10 + toppingCount;
+    var clean = st.orderMistakes === 0;
+    var memoryStar = clean && st.orderReplays === 0 && memoryMode();
+    var earned = 10 + toppingCount + (memoryStar ? 5 : 0);
     var art = $('customer-art').getBoundingClientRect();
     coinsFly(earned, art.left + art.width / 2, art.top + art.height / 2);
 
     save.served++;
+    save.stats.orders++;
+    if (clean) save.stats.firstTry++;
+    save.stats.bestLevel = Math.max(save.stats.bestLevel, st.order.level || difficulty());
+    save.stats.totalSeconds += elapsedSeconds;
     var isNewSticker = !save.stickers[st.charKey];
     if (isNewSticker) save.stickers[st.charKey] = true;
     persist();
     refreshHud();
+
+    var feedbackBits = [];
+    feedbackBits.push((st.order.sauce === false ? 'No sauce' : 'Sauce') + ' and ' + (st.order.cheese === false ? 'no cheese' : 'cheese') + ' remembered.');
+    feedbackBits.push('Toppings: ' + orderPhrases(st.order).join(' and ') + '.');
+    if (st.order.zones && Object.keys(st.order.zones).length) feedbackBits.push('Left/right placement checked.');
+    feedbackBits.push(clean ? '⭐ No corrections needed!' : 'You fixed ' + st.orderMistakes + ' ' + (st.orderMistakes === 1 ? 'mistake' : 'mistakes') + '.');
+    feedbackBits.push(st.orderReplays ? 'Order replayed ' + st.orderReplays + ' time' + (st.orderReplays === 1 ? '' : 's') + '.' : '🧠 Remembered without replaying.');
+    if (save.settings.timer) feedbackBits.push('Finished in ' + elapsedSeconds + ' seconds.');
+    if (memoryStar) feedbackBits.push('✨ Memory bonus: 5 coins!');
+    $('speech-feedback').innerHTML = feedbackBits.join('<br>');
+    $('speech-feedback').classList.remove('hidden');
+    announce(feedbackBits.join(' '));
 
     setTimeout(function () {
       if (isNewSticker) {
@@ -972,7 +1237,7 @@
           showBanner('🎉 ' + save.served + ' pizzas! You’re a Pizza Star! 🎉');
           confetti(80);
           AU.tada();
-          speak('Wow! ' + save.served + ' pizzas! You are a pizza star!', { rate: 1, pitch: 1.2 });
+          vplay('narrator/cheer-star.mp3');
         }, isNewSticker ? 1400 : 0);
       }
       $('btn-next').classList.remove('hidden');
@@ -1006,6 +1271,122 @@
     });
   }
 
+  // ---------- tutorial, teacher tools, and reward shop ----------
+  var lastPanelFocus = null;
+  function openPanel(id) {
+    lastPanelFocus = document.activeElement;
+    $('modal-backdrop').classList.remove('hidden');
+    ['tutorial', 'settings', 'report', 'shop'].forEach(function (name) {
+      $('panel-' + name).classList.toggle('hidden', name !== id);
+    });
+    var panel = $('panel-' + id);
+    var focusable = panel.querySelector('button, select, input');
+    if (focusable) setTimeout(function () { focusable.focus(); }, 20);
+  }
+  function closePanels() {
+    $('modal-backdrop').classList.add('hidden');
+    ['tutorial', 'settings', 'report', 'shop'].forEach(function (name) { $('panel-' + name).classList.add('hidden'); });
+    if (lastPanelFocus && lastPanelFocus.focus) lastPanelFocus.focus();
+  }
+
+  var tutorialSteps = [
+    { icon: '👂', text: 'Listen carefully to the customer. You can also read the words and pictures.' },
+    { icon: '🧠', text: 'Remember the sauce, cheese, topping amounts, and any special directions.' },
+    { icon: '🍕', text: 'Prepare the dough and base. Some customers may ask for no sauce or no cheese.' },
+    { icon: '👆', text: 'Tap a topping to add it, or drag it exactly where it belongs. Tap a placed topping to remove it.' },
+    { icon: '🔊', text: 'Use Hear Again if you forget. Higher levels challenge you to remember without replaying.' },
+    { icon: '⭐', text: 'Correct your pizza, bake it, and read your learning feedback. Now you are ready!' }
+  ];
+  var tutorialIndex = 0;
+  function renderTutorial() {
+    var item = tutorialSteps[tutorialIndex];
+    $('tutorial-visual').textContent = item.icon;
+    $('tutorial-text').textContent = item.text;
+    $('tutorial-progress').textContent = (tutorialIndex + 1) + ' of ' + tutorialSteps.length;
+    $('btn-tutorial-prev').disabled = tutorialIndex === 0;
+    $('btn-tutorial-next').textContent = tutorialIndex === tutorialSteps.length - 1 ? 'Start!' : 'Next';
+  }
+  function startTutorial(after) {
+    st.pendingAfterTutorial = after || null;
+    tutorialIndex = 0;
+    renderTutorial();
+    openPanel('tutorial');
+  }
+  function finishTutorial() {
+    save.tutorialSeen = true; persist();
+    var after = st.pendingAfterTutorial;
+    st.pendingAfterTutorial = null;
+    closePanels();
+    if (after === 'play') enterCustomer();
+  }
+
+  function openSettings() {
+    $('setting-difficulty').value = String(difficulty());
+    $('setting-instructions').value = save.settings.instructionMode || 'both';
+    $('setting-memory').checked = !!save.settings.memory;
+    $('setting-hints').checked = !!save.settings.hints;
+    $('setting-quick').checked = !!save.settings.quickPrep;
+    $('setting-timer').checked = !!save.settings.timer;
+    $('setting-motion').checked = !!save.settings.reducedMotion;
+    openPanel('settings');
+  }
+  function saveSettings() {
+    save.settings.difficulty = Number($('setting-difficulty').value);
+    save.settings.instructionMode = $('setting-instructions').value;
+    save.settings.memory = $('setting-memory').checked;
+    save.settings.hints = $('setting-hints').checked;
+    save.settings.quickPrep = $('setting-quick').checked;
+    save.settings.timer = $('setting-timer').checked;
+    save.settings.reducedMotion = $('setting-motion').checked;
+    persist(); applyPreferences(); refreshHud(); closePanels();
+    showBanner('⚙️ Settings saved');
+  }
+  function openReport() {
+    var accuracy = save.stats.orders ? Math.round(save.stats.firstTry / save.stats.orders * 100) : 0;
+    var averageTime = save.stats.orders ? Math.round(save.stats.totalSeconds / save.stats.orders) + ' sec' : '—';
+    var items = [
+      ['Orders completed', save.stats.orders], ['First-try accuracy', accuracy + '%'],
+      ['Corrections made', save.stats.mistakes], ['Order replays', save.stats.replays],
+      ['Toppings placed', save.stats.toppingsPlaced], ['Average time', averageTime],
+      ['Highest level', save.stats.bestLevel || '—']
+    ];
+    $('report-content').innerHTML = items.map(function (item) {
+      return '<div class="report-stat"><strong>' + item[1] + '</strong>' + item[0] + '</div>';
+    }).join('');
+    openPanel('report');
+  }
+
+  var SHOP_ITEMS = [
+    { key: 'classic', icon: '🍕', name: 'Classic Shop', cost: 0 },
+    { key: 'sunshine', icon: '☀️', name: 'Sunshine Set', cost: 25 },
+    { key: 'space', icon: '🚀', name: 'Space Sparkles', cost: 45 },
+    { key: 'rainbow', icon: '🌈', name: 'Rainbow Buttons', cost: 70 }
+  ];
+  function openShop() { renderShop(); openPanel('shop'); }
+  function renderShop() {
+    $('shop-coins').textContent = save.coins;
+    $('shop-grid').innerHTML = '';
+    SHOP_ITEMS.forEach(function (item) {
+      var owned = !!save.unlocks[item.key];
+      var equipped = save.theme === item.key || (!save.theme && item.key === 'classic');
+      var d = document.createElement('div');
+      d.className = 'shop-item' + (equipped ? ' equipped' : '');
+      d.innerHTML = '<div class="preview">' + item.icon + '</div><h3>' + item.name + '</h3><p>' + (owned ? (equipped ? 'Equipped' : 'Unlocked') : '🪙 ' + item.cost) + '</p>';
+      var b = document.createElement('button');
+      b.className = 'small-btn' + (equipped ? '' : ' primary');
+      b.textContent = equipped ? 'Using' : (owned ? 'Use' : 'Unlock');
+      b.disabled = equipped;
+      b.addEventListener('click', function () {
+        if (!owned) {
+          if (save.coins < item.cost) { announce('You need ' + (item.cost - save.coins) + ' more coins.'); showBanner('Keep making pizzas! 🍕'); return; }
+          save.coins -= item.cost; save.unlocks[item.key] = true;
+        }
+        save.theme = item.key; persist(); applyPreferences(); refreshHud(); renderShop(); AU.tada();
+      });
+      d.appendChild(b); $('shop-grid').appendChild(d);
+    });
+  }
+
   // ---------- title ----------
   function buildTitle() {
     $('title-logo').innerHTML = A.scenes.logo ||
@@ -1031,6 +1412,8 @@
     AU.pop();
     st.sandbox = false;
     st.baking = false;
+    stopOrderTimer();
+    GV.stop();
     try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
     buildTitle();
     showScreen('title');
@@ -1050,31 +1433,52 @@
     buildScenes();
     buildTitle();
     refreshHud();
+    applyPreferences();
     AU.setMuted(save.muted);
+    GV.setMuted(save.muted);
 
     $('btn-play').addEventListener('click', function () {
-      AU.init();
+      AU.init(); GV.unlock();
       if (!save.muted) AU.bgmStart();
       AU.pop();
       st.sandbox = false;
-      enterCustomer();
+      if (!save.tutorialSeen) startTutorial('play');
+      else enterCustomer();
     });
     $('btn-sandbox').addEventListener('click', function () {
-      AU.init();
+      AU.init(); GV.unlock();
       if (!save.muted) AU.bgmStart();
       AU.pop();
       startSandbox();
     });
     $('btn-stickers').addEventListener('click', function () { AU.init(); openStickers(); });
+    $('btn-tutorial').addEventListener('click', function () { AU.init(); startTutorial(); });
+    $('btn-settings').addEventListener('click', function () { AU.init(); openSettings(); });
+    $('btn-shop').addEventListener('click', function () { AU.init(); openShop(); });
+    $('hud-coins').addEventListener('click', openShop);
     $('btn-stickers-back').addEventListener('click', goTitle);
     $('btn-sound').addEventListener('click', toggleSound);
     $('btn-sound-title').addEventListener('click', function () { AU.init(); toggleSound(); });
     $('btn-home').addEventListener('click', goTitle);
     $('btn-make').addEventListener('click', function () { AU.pop(); startKitchen(); });
-    $('btn-hear').addEventListener('click', function () { AU.pop(); speakOrder(); });
+    $('btn-hear').addEventListener('click', function () { AU.pop(); speakOrder(true); });
     $('btn-bake').addEventListener('click', startBake);
     $('btn-serve').addEventListener('click', function () { if (st.sandbox) sandboxServe(); else serve(); });
     $('btn-next').addEventListener('click', nextCustomer);
+    $('btn-tutorial-prev').addEventListener('click', function () { if (tutorialIndex > 0) { tutorialIndex--; renderTutorial(); } });
+    $('btn-tutorial-next').addEventListener('click', function () {
+      if (tutorialIndex < tutorialSteps.length - 1) { tutorialIndex++; renderTutorial(); }
+      else finishTutorial();
+    });
+    $('btn-save-settings').addEventListener('click', saveSettings);
+    $('btn-report').addEventListener('click', openReport);
+    $('btn-reset-report').addEventListener('click', function () {
+      save.stats = { orders: 0, firstTry: 0, mistakes: 0, replays: 0, toppingsPlaced: 0, bestLevel: 0, totalSeconds: 0 };
+      persist(); openReport(); announce('Learning summary reset.');
+    });
+    document.querySelectorAll('[data-close-panel]').forEach(function (b) { b.addEventListener('click', closePanels); });
+    $('modal-backdrop').addEventListener('click', function (e) { if (e.target === $('modal-backdrop')) closePanels(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('modal-backdrop').classList.contains('hidden')) closePanels(); });
 
     // iOS: block pinch zoom & double-tap zoom leftovers
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });

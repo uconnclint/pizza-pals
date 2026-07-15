@@ -10,9 +10,10 @@ accounts, no internet needed after loading — it's a single static web page.
 
 ## How to play
 
-1. Tap **Play!** — a customer walks up and gives an order
-   (e.g. *"a cheese pizza with 3 olives"*). Tap **🔊 Hear it** to have the
-   order read aloud (great for pre-readers).
+1. Tap **Play!** — a customer walks up and gives an order. Depending on the
+   teacher-selected level, orders can include sauce/no sauce, cheese/no cheese,
+   multiple topping counts, exclusions, and left/right placement. Tap
+   **🔊 Hear it** to have the order read aloud.
 2. **Make the pizza**:
    - **Tap** the dough 3 times to pat it flat
    - **Rub** the sauce all around with a finger
@@ -24,8 +25,26 @@ accounts, no internet needed after loading — it's a single static web page.
    customer becomes a **sticker** in your sticker book. Every 5 pizzas =
    a confetti celebration.
 
-There is no failing and no timer — orders gently guide counting, matching, and
-following multi-step directions.
+There is no failing. Students correct their pizza before baking and receive a
+specific learning summary after serving it. An optional no-pressure timer,
+memory mode, reading-only mode, and listening-only mode are available in
+**Teacher Settings**.
+
+## Difficulty and teacher tools
+
+- **Level 1:** one topping with visible picture/count support
+- **Level 2:** ingredient choices and up to two topping types
+- **Level 3:** hidden-order memory practice with two topping types
+- **Level 4:** left/right placement and "no topping" exclusions
+- Local learning summary: completed orders, first-try accuracy, corrections,
+  order replays, toppings placed, average time, and highest level
+- Optional requested-topping highlights, quick base preparation after three
+  pizzas, reduced motion, and a no-pressure completion timer
+- Keyboard-friendly pizza preparation and tap-to-add alternatives to dragging
+
+Coins now unlock visual reward themes in the **Pizza Prize Shop**. The guided
+tutorial opens automatically for a first-time player and remains available
+from the title screen.
 
 ## Learning goals (K-2)
 

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Pizza Pals!">
 <title>Pizza Pals! 🍕</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🍕%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 <div id="rotate-overlay">
@@ -30,6 +30,9 @@
       <button id="btn-sandbox" class="big-btn btn-sandbox">🎨&nbsp; Make My Own!</button>
       <div class="title-row">
         <button id="btn-stickers" class="round-btn" aria-label="Sticker book">📖</button>
+        <button id="btn-tutorial" class="round-btn" aria-label="How to play">❓</button>
+        <button id="btn-shop" class="round-btn" aria-label="Reward shop">🎁</button>
+        <button id="btn-settings" class="round-btn" aria-label="Teacher settings">⚙️</button>
         <button id="btn-sound-title" class="round-btn btn-sound" aria-label="Sound on or off">🔊</button>
       </div>
       <div class="title-badge" id="title-badge"></div>
@@ -42,8 +45,9 @@
     <div id="customer-slot"><div id="customer-art"></div></div>
     <div class="counter-front" id="counter-front"></div>
     <div id="speech-bubble" class="speech-bubble hidden">
-      <div id="speech-text"></div>
+      <div id="speech-text" role="status" aria-live="polite"></div>
       <div id="speech-order" class="order-card hidden"></div>
+      <div id="speech-feedback" class="feedback-card hidden"></div>
       <button id="btn-hear" class="hear-btn hidden" aria-label="Hear the order">🔊 Hear it</button>
     </div>
     <div id="serve-tray" class="serve-tray hidden"></div>
@@ -55,8 +59,10 @@
   <section id="screen-kitchen" class="screen">
     <div class="scene-bg" id="kitchen-bg"></div>
     <div id="kitchen-order" class="order-strip"></div>
-    <div id="step-hint" class="step-hint"></div>
-    <div id="pizza-zone">
+    <div id="order-timer" class="order-timer hidden" aria-label="Order timer">⏱ 0:00</div>
+    <div id="step-hint" class="step-hint" role="status" aria-live="polite"></div>
+    <div id="base-choices" class="base-choices hidden" aria-label="Choose the requested pizza base"></div>
+    <div id="pizza-zone" role="button" tabindex="0" aria-label="Pizza work area. Follow the instruction shown above.">
       <div id="pizza-wrap">
         <div id="pizza-base"></div>
         <div id="pizza-toppings"></div>
@@ -86,21 +92,75 @@
   <!-- persistent HUD -->
   <div id="hud" class="hidden">
     <button id="btn-home" class="round-btn" aria-label="Home">🏠</button>
-    <div class="hud-pill" id="hud-coins"><span class="hud-ico" id="hud-coin-ico">🪙</span><span id="coin-count">0</span></div>
-    <div class="hud-pill" id="hud-served"><span class="hud-ico">🍕</span><span id="served-count">0</span></div>
+    <button class="hud-pill" id="hud-coins" aria-label="Open reward shop"><span class="hud-ico" id="hud-coin-ico">🪙</span><span class="hud-label">Coins</span><span id="coin-count">0</span></button>
+    <div class="hud-pill" id="hud-served" aria-label="Pizzas made"><span class="hud-ico">🍕</span><span class="hud-label">Pizzas</span><span id="served-count">0</span></div>
+    <div class="hud-level" id="hud-level">Level 1</div>
     <button id="btn-sound" class="round-btn btn-sound" aria-label="Sound on or off">🔊</button>
   </div>
 
-  <div id="fx-layer"></div>
-  <div id="banner" class="banner hidden"></div>
+  <!-- accessible in-game panels -->
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <section id="panel-tutorial" class="game-panel hidden" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+      <button class="panel-close" data-close-panel aria-label="Close">✕</button>
+      <h2 id="tutorial-title">How to Play</h2>
+      <div id="tutorial-visual" class="tutorial-visual" aria-hidden="true">👂</div>
+      <p id="tutorial-text"></p>
+      <div class="panel-actions"><button id="btn-tutorial-prev" class="small-btn">Back</button><span id="tutorial-progress"></span><button id="btn-tutorial-next" class="small-btn primary">Next</button></div>
+    </section>
+
+    <section id="panel-settings" class="game-panel settings-panel hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <button class="panel-close" data-close-panel aria-label="Close">✕</button>
+      <h2 id="settings-title">Teacher Settings</h2>
+      <label>Difficulty
+        <select id="setting-difficulty">
+          <option value="1">Level 1 — one topping</option>
+          <option value="2">Level 2 — ingredient choices</option>
+          <option value="3">Level 3 — memory and two toppings</option>
+          <option value="4">Level 4 — placement and exclusions</option>
+        </select>
+      </label>
+      <label>Instruction format
+        <select id="setting-instructions">
+          <option value="both">Words, pictures, and audio</option>
+          <option value="listen">Listening only</option>
+          <option value="read">Reading only</option>
+        </select>
+      </label>
+      <label class="check-row"><input id="setting-memory" type="checkbox"> Hide the order while cooking</label>
+      <label class="check-row"><input id="setting-hints" type="checkbox"> Highlight requested toppings</label>
+      <label class="check-row"><input id="setting-quick" type="checkbox"> Quick prep after three pizzas</label>
+      <label class="check-row"><input id="setting-timer" type="checkbox"> Show a no-pressure completion timer</label>
+      <label class="check-row"><input id="setting-motion" type="checkbox"> Reduce animation</label>
+      <div class="panel-actions"><button id="btn-report" class="small-btn">View learning summary</button><button id="btn-save-settings" class="small-btn primary">Save</button></div>
+    </section>
+
+    <section id="panel-report" class="game-panel hidden" role="dialog" aria-modal="true" aria-labelledby="report-title">
+      <button class="panel-close" data-close-panel aria-label="Close">✕</button>
+      <h2 id="report-title">Learning Summary</h2>
+      <div id="report-content" class="report-grid"></div>
+      <div class="panel-actions"><button id="btn-reset-report" class="small-btn danger">Reset summary</button><button class="small-btn primary" data-close-panel>Done</button></div>
+    </section>
+
+    <section id="panel-shop" class="game-panel hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+      <button class="panel-close" data-close-panel aria-label="Close">✕</button>
+      <h2 id="shop-title">Pizza Prize Shop</h2>
+      <p class="shop-balance">🪙 <span id="shop-coins">0</span> coins</p>
+      <div id="shop-grid" class="shop-grid"></div>
+    </section>
+  </div>
+
+  <div id="fx-layer" aria-hidden="true"></div>
+  <div id="banner" class="banner hidden" role="status" aria-live="polite"></div>
+  <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
 </div>
 
-<script src="js/audio.js?v=4"></script>
-<script src="js/assets-food.js?v=4"></script>
-<script src="js/assets-scenes.js?v=4"></script>
-<script src="js/assets-characters-a.js?v=4"></script>
-<script src="js/assets-characters-b.js?v=4"></script>
-<script src="js/assets-raster.js?v=4"></script>
-<script src="js/game.js?v=4"></script>
+<script src="js/audio.js?v=9"></script>
+<script src="js/voice.js?v=9"></script>
+<script src="js/assets-food.js?v=9"></script>
+<script src="js/assets-scenes.js?v=9"></script>
+<script src="js/assets-characters-a.js?v=9"></script>
+<script src="js/assets-characters-b.js?v=9"></script>
+<script src="js/assets-raster.js?v=9"></script>
+<script src="js/game.js?v=9"></script>
 </body>
 </html>
