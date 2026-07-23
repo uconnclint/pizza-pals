@@ -85,24 +85,16 @@ window.__ppStart = function () {
   }
 
   // ---------- persistence ----------
-  var SAVE_KEY = 'pizzaPals.save.v1';
-  var save = {
-    coins: 0, served: 0, sandboxMade: 0, stickers: {}, muted: false,
-    tutorialSeen: false,
-    settings: { difficulty: 1, instructionMode: 'both', memory: false, hints: true, quickPrep: true, timer: false, reducedMotion: false },
-    stats: { orders: 0, firstTry: 0, mistakes: 0, replays: 0, toppingsPlaced: 0, bestLevel: 0, totalSeconds: 0 },
-    unlocks: { classic: true }, theme: 'classic'
-  };
-  try {
-    var raw = localStorage.getItem(SAVE_KEY);
-    if (raw) { var s = JSON.parse(raw); if (s && typeof s === 'object') Object.assign(save, s); }
-  } catch (e) {}
-  save.settings = Object.assign({ difficulty: 1, instructionMode: 'both', memory: false, hints: true, quickPrep: true, timer: false, reducedMotion: false }, save.settings || {});
-  save.stats = Object.assign({ orders: 0, firstTry: 0, mistakes: 0, replays: 0, toppingsPlaced: 0, bestLevel: 0, totalSeconds: 0 }, save.stats || {});
-  save.unlocks = Object.assign({ classic: true }, save.unlocks || {});
-  function persist() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {}
-  }
+  // Facade over window.CE.save (js/engine-bridge.js): SAVE_DEFAULTS/
+  // migrateLegacySave there preserve this exact shape (coins, served,
+  // sandboxMade, stickers, tutorialSeen, settings{}, stats{}, unlocks{},
+  // theme) minus `muted`, which now lives in CE.settings exclusively (see
+  // toggleSound() below). CE.save.get() returns the SAME live mutable
+  // object every time, so every `save.foo = ...` / `save.foo.bar++` below
+  // keeps working exactly as before — only how it's loaded/written changed.
+  var CE = window.CE;
+  var save = CE.save.get();
+  function persist() { CE.save.save(); }
 
   // ---------- runtime state ----------
   var st = {
