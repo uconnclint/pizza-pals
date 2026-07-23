@@ -161,8 +161,6 @@ window.__ppStart = function () {
     if (order.forbidden) { seq.push('narrator/no.mp3'); seq.push('narrator/top-' + order.forbidden + '.mp3'); }
     return seq;
   }
-  // legacy no-op — every spoken line now routes through GameVoice clips
-  function speak() {}
 
   function announce(text) {
     var el = $('sr-status');
@@ -521,7 +519,6 @@ window.__ppStart = function () {
     renderOrderStrip();
     if (!st.sandbox && save.settings.quickPrep && save.served >= 3) quickPrepareBase();
     else setStep('dough');
-    forcePizzaPaint();
     startOrderTimer();
   }
 
@@ -541,10 +538,6 @@ window.__ppStart = function () {
     showBanner('⚡ Base prepared — focus on the order!');
     setStep('toppings');
   }
-
-  // The pizza base renders as inline SVG (vectors), which paints reliably on
-  // entry — no image warm-up or repaint nudging needed.
-  function forcePizzaPaint() {}
 
   // Create a raster pizza layer on demand (once). Building the layers
   // progressively — instead of stacking all five images up front — avoids a

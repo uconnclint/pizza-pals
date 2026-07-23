@@ -1,10 +1,60 @@
-# Cloudflare Pages headers
-# Always revalidate the HTML so code/art updates reach devices immediately.
-# CSS/JS are cache-busted with ?v= query strings; WebP images have stable
-# unique names, so they can be cached hard.
-/
-  Cache-Control: no-cache
-/index.html
-  Cache-Control: no-cache
+# _headers — Cloudflare response headers (Workers static assets and Pages both read this file
+# from the deploy root). Long-cache content that never changes URL when it changes; always
+# revalidate HTML/JS/CSS so a shipped fix actually reaches a cached iPad/Chromebook instead of
+# sitting behind a stale cache with no service worker to bust it (game-house-style's "Cache"
+# gotcha).
+#
+# ONE RULE PER DIRECTORY — deliberately, not a blanket /*.js or /*.html-plus-/index.html.
+# Cloudflare's `*` DOES cross path segments, and when several rules match one URL Cloudflare
+# comma-JOINS their Cache-Control values instead of letting the more specific one win (found +
+# fixed during the critter-codex Phase 2 migration: a blanket /*.js there also matched
+# /engine/phaser/vendor/phaser.min.js and produced a broken, self-contradicting header). Pizza
+# Pals doesn't load anything under engine/phaser (pure DOM+SVG/raster game, no Phaser), so that
+# exact collision can't happen here, but the same discipline applies everywhere below: every
+# directory gets ONE owning rule, and no two rules ever match the same path.
+#
+# The old version of this file cache-busted JS/CSS with ?v=N query strings instead of a
+# revalidate header — index.html no longer carries those (redundant now, see that commit).
+#
+# art/ filenames are STABLE, not content-hashed (e.g. art/img/food/pepperoni.webp, not
+# pepperoni.a3f92e1.webp; same for art/audio/*.mp3) — marking them immutable below means a
+# future art or voice re-export at the same filename won't reach an already-cached device for
+# up to a year. This mirrors the same tradeoff already made for slime's assets/sprites/*.png and
+# scoop-troop's art/* (also stable filenames) elsewhere in this portfolio; flagged here rather
+# than silently copied.
+
+# Long-cache immutable art + audio.
 /art/*
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=31536000, immutable
+
+# Entry points — always revalidate so a redeploy is visible on the next load. Pizza Pals ships
+# TWO html files (index.html, teacher-guide.html) — /*.html alone covers both without also
+# needing an /index.html rule, which would double-match index.html against both rules (the exact
+# bug slime's migration found and fixed: /index.html and /*.html both matching one request and
+# comma-joining an identical Cache-Control value onto itself).
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Game + engine source, scoped per directory so nothing overlaps.
+/js/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/engine/core/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/engine/dom/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# NOTE: engine/phaser/* and engine/net/* have no rule here on purpose — this game never loads
+# anything from either (no <script> tag references them), so they're present on disk from the
+# sync-engine.mjs copy but never actually requested. Adding rules for dead weight isn't worth
+# two more engine/* patterns to keep non-overlapping.
+
+/*.css
+  Cache-Control: public, max-age=0, must-revalidate
+
+/ENGINE_VERSION.json
+  Cache-Control: public, max-age=0, must-revalidate

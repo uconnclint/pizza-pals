@@ -1,0 +1,46 @@
+# .assetsignore — Cloudflare Workers static-assets ignore list (gitignore-style syntax).
+# Adopted from clint-engine/templates/assetsignore (the canonical list — see
+# clint-engine/docs/CONTRACTS.md "Templates & tools"). Keeps dev-only files, source control,
+# and editable art masters out of the deployed bundle. Lives at the repo root because
+# wrangler.toml's [assets] directory = "./" — the assets directory root and the repo root
+# coincide for this game (CONTRACTS.md v0.2.1: .assetsignore belongs in the assets directory
+# root, not necessarily beside wrangler.toml).
+#
+# `dist/` is a stale full-tree mirror (index.html, css/, js/, art/) left over from an earlier
+# deploy attempt — already git-ignored, but excluded here too as defense-in-depth in case it
+# still exists on a local disk at deploy time. The live game is served straight from the repo
+# root (this wrangler.toml), never from dist/, so nothing imports or fetches anything under it.
+#
+# `voice` excludes voice/generate.py (the ElevenLabs generation script) and voice/list-voices.sh
+# — dev-only tooling, not runtime code. The runtime clips it generates live elsewhere, under
+# art/audio/*.mp3, and DO ship. voice/.env (the ElevenLabs API key) is already git-ignored and
+# was verified NOT tracked by git; this line excludes it from the deploy bundle too, belt-and-
+# suspenders, the same way **/.env below covers it in general.
+
+**/.wrangler
+**/node_modules
+**/.git
+**/.DS_Store
+**/.env
+.claude
+*.zip
+*.md
+wrangler.toml
+.assetsignore
+tools/
+docs/
+dist/
+voice
+
+# net/ server files — these import 'cloudflare:workers' and run ONLY inside a Durable Object;
+# a game serving `assets = "./"` (repo root) must not ship worker source as a public static file.
+# Pizza Pals doesn't use the net/ layer at all (no multiplayer), but engine/net/ is still vendored
+# by sync-engine.mjs along with the rest of engine/ — exclude the DO-only files exactly like
+# scoop-troop does. The pure/browser net/ files (moderation.js, roomClient.js,
+# offlineFallback.js, router.js) are deliberately NOT listed here — harmless if they ship, and
+# excluded is a solved-elsewhere non-problem, not a security concern.
+engine/net/roomDO.js
+engine/net/snapshotRelayRoom.js
+engine/net/tickedLobbyRoom.js
+engine/net/teamsAndBoards.js
+engine/net/raceRoom.js
