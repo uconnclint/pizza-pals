@@ -121,8 +121,13 @@ window.__ppStart = function () {
   // ---------- voice (ElevenLabs clips, one per character + a narrator) ----------
   var GV = window.GameVoice || { play: function () {}, seq: function () {}, stop: function () {}, setMuted: function () {}, preload: function () {}, unlock: function () {} };
   var SINGULAR = { mushroom: 1, olive: 1, pepper: 1 };
-  function vplay(url) { if (!save.muted) GV.play(url); }
-  function vseq(urls) { if (!save.muted && urls && urls.length) GV.seq(urls); }
+  // No `!muted` guard here anymore: GV.play/seq route through window.CE.speech
+  // (see voice.js), which already gates on CE.settings.get('muted') itself —
+  // single source of truth, same reasoning as toggleSound() below.
+  // `fallbackText` is what SpeechSynthesis speaks if the clip is missing or
+  // fails to load (see voice.js's header comment for how the two combine).
+  function vplay(url, fallbackText) { GV.play(url, fallbackText); }
+  function vseq(urls, fallbackText) { if (urls && urls.length) GV.seq(urls, fallbackText); }
   // build the clip sequence that reads an order aloud (matches orderSentence)
   function orderClips(charKey, order) {
     var seq = [charKey + '/ordercall.mp3', 'narrator/pizza-base.mp3'];
@@ -178,7 +183,7 @@ window.__ppStart = function () {
   function refreshHud() {
     $('coin-count').textContent = save.coins;
     $('served-count').textContent = totalPizzas();
-    var ic = save.muted ? '🔇' : '🔊';
+    var ic = CE.settings.get('muted') ? '🔇' : '🔊';
     $('btn-sound').textContent = ic;
     $('btn-sound-title').textContent = ic;
     $('hud-coins').setAttribute('aria-label', save.coins + ' coins. Open reward shop.');
@@ -186,13 +191,13 @@ window.__ppStart = function () {
     $('hud-level').textContent = 'Level ' + difficulty();
     if ($('shop-coins')) $('shop-coins').textContent = save.coins;
   }
+  // `muted` now lives ONLY in CE.settings (no more save.muted) — this just
+  // flips it. AU.setMuted/GV.setMuted/GV.stop()/bgm start-on-unmute all
+  // happen in the CE.settings.onChange('muted') listener wired in init()
+  // below, so ANY future code path that changes `muted` (not just this
+  // button) keeps AU/GV in sync too, not just this one call site.
   function toggleSound() {
-    save.muted = !save.muted;
-    AU.setMuted(save.muted);
-    GV.setMuted(save.muted);
-    if (save.muted) { GV.stop(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
-    else { AU.bgmStart(); AU.pop(); }
-    persist();
+    CE.settings.set('muted', !CE.settings.get('muted'));
     refreshHud();
   }
 
@@ -1429,17 +1434,36 @@ window.__ppStart = function () {
   }
 
   // ---------- wire up ----------
+  // AU (GameAudio) and GV (GameVoice) each cache their OWN internal `muted`
+  // flag (not a live CE.settings getter), so something has to actively push
+  // CE.settings.get('muted') into both whenever it changes. Centralizing
+  // that here — instead of inline in toggleSound() — means ANY future path
+  // that flips `muted` keeps AU/GV in sync too, not just the sound button.
+  function applyMutedChange(muted) {
+    AU.setMuted(muted);
+    GV.setMuted(muted);
+    if (muted) { GV.stop(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
+    else { AU.bgmStart(); AU.pop(); }
+  }
   function init() {
     buildScenes();
     buildTitle();
     refreshHud();
     applyPreferences();
-    AU.setMuted(save.muted);
-    GV.setMuted(save.muted);
+    // Initial sync only (onChange doesn't fire for the value CE.settings
+    // already loaded) — deliberately NOT applyMutedChange(), which would
+    // wrongly auto-start bgm/play a pop on every page load for an already-
+    // unmuted returning player; bgm has only ever started from a deliberate
+    // Play/Sandbox tap (below), matching the original behavior exactly.
+    AU.setMuted(CE.settings.get('muted'));
+    GV.setMuted(CE.settings.get('muted'));
+    CE.settings.onChange(function (key, value) {
+      if (key === 'muted') applyMutedChange(value);
+    });
 
     $('btn-play').addEventListener('click', function () {
       AU.init(); GV.unlock();
-      if (!save.muted) AU.bgmStart();
+      if (!CE.settings.get('muted')) AU.bgmStart();
       AU.pop();
       st.sandbox = false;
       if (!save.tutorialSeen) startTutorial('play');
@@ -1447,7 +1471,7 @@ window.__ppStart = function () {
     });
     $('btn-sandbox').addEventListener('click', function () {
       AU.init(); GV.unlock();
-      if (!save.muted) AU.bgmStart();
+      if (!CE.settings.get('muted')) AU.bgmStart();
       AU.pop();
       startSandbox();
     });
