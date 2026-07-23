@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pizza Pals! — Grown-Ups' Corner (Teacher Guide)</title>
+<style>
+  :root{
+    --tomato:#E8503A; --coral:#FF6B6B; --crust:#F2B84B; --cheese:#FFD855;
+    --leaf:#3E9D4C; --grape:#7C5CE0; --teal:#2FA9B8; --ink:#3A2820; --ink-soft:#6b564c;
+    --cream:#FFF8EC; --paper:#ffffff; --line:#efe2cf; --shade:#faf1e1;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0; color:var(--ink); background:var(--cream);
+    font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.6; font-size:17px;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:28px 22px 70px;}
+  h1,h2,h3{line-height:1.2; color:var(--ink);}
+  a{color:var(--tomato);}
+
+  /* header */
+  .masthead{
+    background:linear-gradient(135deg,#FFE9C7,#FFF8EC);
+    border:3px solid var(--ink); border-radius:26px;
+    padding:26px 30px; text-align:center; box-shadow:0 8px 0 rgba(58,40,32,.10);
+    position:relative; overflow:hidden;
+  }
+  .masthead .apple{font-size:44px; line-height:1;}
+  .masthead h1{margin:6px 0 4px; font-size:32px; letter-spacing:.2px;}
+  .masthead .sub{margin:0; color:var(--ink-soft); font-weight:600;}
+  .pills{margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  .pill{background:#fff; border:2px solid var(--ink); border-radius:999px;
+    padding:4px 14px; font-size:14px; font-weight:700;}
+
+  /* nav */
+  nav.toc{margin:22px 0 8px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  nav.toc a{background:#fff; border:2px solid var(--line); border-radius:999px;
+    padding:6px 14px; font-size:14px; font-weight:700; text-decoration:none; color:var(--ink);}
+  nav.toc a:hover{border-color:var(--tomato); color:var(--tomato);}
+
+  /* cards / sections */
+  section.card{
+    background:var(--paper); border:2px solid var(--line); border-radius:22px;
+    padding:24px 26px; margin:20px 0; box-shadow:0 4px 0 rgba(58,40,32,.05);
+  }
+  section.card > h2{
+    display:flex; align-items:center; gap:10px; margin:0 0 4px; font-size:24px;
+  }
+  .kicker{color:var(--tomato); font-weight:800; text-transform:uppercase;
+    letter-spacing:1.2px; font-size:12.5px; margin:0 0 14px;}
+  h3{font-size:18.5px; margin:22px 0 6px;}
+  p{margin:10px 0;}
+
+  /* mechanic list */
+  .mech{display:grid; gap:12px; margin-top:10px;}
+  .mech .row{display:grid; grid-template-columns:44px 1fr; gap:14px; align-items:start;
+    background:var(--shade); border:1.5px solid var(--line); border-radius:16px; padding:12px 14px;}
+  .mech .ic{font-size:26px; text-align:center; line-height:1.4;}
+  .mech b{color:var(--ink);}
+
+  /* tables */
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:15px;}
+  th,td{text-align:left; vertical-align:top; padding:10px 12px; border-bottom:1.5px solid var(--line);}
+  thead th{background:var(--tomato); color:#fff; border-bottom:none;}
+  thead th:first-child{border-top-left-radius:12px;}
+  thead th:last-child{border-top-right-radius:12px;}
+  tbody tr:nth-child(even){background:var(--shade);}
+  td.code{font-family:"SF Mono",ui-monospace,Consolas,monospace; font-weight:700;
+    color:var(--grape); white-space:nowrap; font-size:13.5px;}
+  .std-title{font-weight:700;}
+
+  /* lessons */
+  .lesson{border:2px solid var(--line); border-radius:18px; padding:4px 18px 18px; margin:16px 0; background:#fff;}
+  .lesson .tag{display:inline-block; margin:16px 0 2px; background:var(--cheese); color:var(--ink);
+    border:2px solid var(--ink); border-radius:999px; padding:3px 14px; font-weight:800; font-size:13px;}
+  .lesson h3{margin:8px 0 2px;}
+  .meta{color:var(--ink-soft); font-weight:600; font-size:14.5px; margin:2px 0 8px;}
+  .lesson .lab{font-weight:800; color:var(--tomato); margin-top:12px;}
+  .vocab{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
+  .vocab span{background:var(--shade); border:1.5px solid var(--line); border-radius:8px;
+    padding:2px 9px; font-size:13.5px; font-weight:600;}
+  ol.steps{margin:6px 0 6px 2px; padding-left:22px;}
+  ol.steps li{margin:5px 0;}
+  ul.q{margin:6px 0 0; padding-left:20px;}
+  ul.q li{margin:5px 0;}
+  .tool{background:#fff3d6; border-radius:6px; padding:0 5px; font-weight:700; white-space:nowrap;}
+
+  /* starters */
+  .starters{display:grid; gap:10px; grid-template-columns:1fr 1fr;}
+  .starters .s{background:var(--shade); border:1.5px solid var(--line); border-radius:14px;
+    padding:12px 14px; font-weight:600;}
+  .starters .s .e{font-size:20px;}
+
+  /* rubric */
+  .rub th:first-child{width:26%;}
+  .lvl1{color:var(--tomato);} .lvl2{color:var(--crust);} .lvl3{color:var(--leaf);}
+
+  .note{background:#fef6df; border:1.5px dashed var(--crust); border-radius:14px;
+    padding:12px 16px; margin:14px 0; font-size:15px;}
+  footer{text-align:center; color:var(--ink-soft); font-size:13.5px; margin-top:26px;}
+  .backtop{text-align:center; margin-top:8px;}
+  .backtop a{font-weight:700; text-decoration:none;}
+
+  @media (max-width:620px){
+    .starters{grid-template-columns:1fr;}
+    .mech .row{grid-template-columns:36px 1fr;}
+    body{font-size:16px;}
+  }
+  @media print{
+    body{background:#fff;}
+    .wrap{max-width:100%; padding:0;}
+    nav.toc,.backtop{display:none;}
+    section.card,.lesson,.masthead{box-shadow:none; break-inside:avoid;}
+    section.card{border-color:#ccc;}
+    thead th{background:#e0e0e0 !important; color:#000 !important;}
+    a{color:#000; text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="apple">🍎🍕</div>
+    <h1>Grown-Ups' Corner</h1>
+    <p class="sub">Teacher &amp; Family Guide for <strong>Pizza Pals!</strong></p>
+    <div class="pills">
+      <span class="pill">Grades K–2 (extends to Gr. 3)</span>
+      <span class="pill">Counting &amp; Following Directions</span>
+      <span class="pill">Intro Computational Thinking</span>
+      <span class="pill">No reading required</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#overview">Overview</a>
+    <a href="#standards">Standards</a>
+    <a href="#lessons">Lesson Plans</a>
+    <a href="#talk">Talking with Kids</a>
+    <a href="#rubric">Assessment Rubric</a>
+  </nav>
+
+  <!-- ============ 1. OVERVIEW ============ -->
+  <section class="card" id="overview">
+    <p class="kicker">What is this?</p>
+    <h2>🍕 The game at a glance</h2>
+    <p><strong>Pizza Pals!</strong> is a touch-friendly pizza-shop game for young learners (built for
+    iPads and Chromebooks, works in any browser). A parade of ten silly customers — kids, a knight
+    puppy, a robot, a monster, an alien, a pirate cat, a witch, a dinosaur, a grandma, and an octopus
+    food critic — each ask for a pizza. Children <em>listen to and read the order</em>, then
+    <em>make the pizza step by step</em> and serve it. Every customer speaks in their own voice, and
+    a friendly narrator reads the steps aloud, so pre-readers can play independently.</p>
+    <p>Underneath the fun, children practice <strong>counting and one-to-one correspondence</strong>,
+    <strong>listening and following multi-step directions</strong>, and their first taste of
+    <strong>computational thinking</strong> — reading symbols, running a sequence of steps, and fixing
+    mistakes. A built-in <strong>Teacher Settings</strong> panel (⚙️ on the title screen) lets you
+    dial the challenge from a single topping up to memory and placement puzzles.</p>
+
+    <h3>The tools &amp; mechanics children actually use</h3>
+    <div class="mech">
+      <div class="row"><div class="ic">🗣️</div><div><b>The order &amp; the “Hear it” button.</b>
+        A customer states an order. It appears three ways at once — <em>spoken audio</em>, <em>written
+        words</em>, and a <em>picture card</em> (a numeral plus that many topping icons). Tapping
+        <span class="tool">🔊 Hear it</span> replays the order so children can check what they missed.</div></div>
+      <div class="row"><div class="ic">👋</div><div><b>Patting the dough.</b> The first make-pizza step:
+        tap the dough three times to flatten it into a crust — an inviting, low-stakes way to start the
+        sequence.</div></div>
+      <div class="row"><div class="ic">🥫</div><div><b>Sauce &amp; cheese choices.</b> Children rub sauce
+        around the pizza and shake on cheese. From Level 2, the customer may ask for <em>no</em> sauce or
+        cheese, so children first tap an <span class="tool">Add sauce / No sauce</span> button — a
+        listen-and-decide (yes/no attribute) task.</div></div>
+      <div class="row"><div class="ic">🧀</div><div><b>Dragging toppings from the bins.</b> Children drag
+        each topping from the shelf onto the pizza, placing the <em>exact</em> number requested. At the
+        highest level, toppings must go on the correct <em>left or right</em> side, and one topping is
+        <em>forbidden</em> (“no mushrooms!”).</div></div>
+      <div class="row"><div class="ic">✅</div><div><b>The live order checklist.</b> A strip at the top
+        tracks progress (<em>2 / 3</em>, green checks) and gently flags problems — too many, a topping
+        that isn’t on the order, or the wrong side — inviting the child to <em>tap a topping to remove
+        it</em> and fix it.</div></div>
+      <div class="row"><div class="ic">🔥</div><div><b>Bake &amp; serve.</b> Tapping <span class="tool">Bake
+        it!</span> slides the pizza into the oven (with a timer and a “Ding!”). Then
+        <span class="tool">Serve it!</span> hands it to the customer, who happily eats and reacts.</div></div>
+      <div class="row"><div class="ic">🎨</div><div><b>“Make My Own!” sandbox.</b> A free-play mode with no
+        order at all — children invent any pizza they like, bake it, and celebrate. Perfect for creativity,
+        early finishers, and “explain what you made” conversations.</div></div>
+      <div class="row"><div class="ic">🏆</div><div><b>Rewards: stickers, coins &amp; Prize Shop.</b> Each
+        served pizza earns coins and adds to the sticker book (📖 — collect all ten Pals). Coins can be
+        spent in the <span class="tool">Prize Shop</span> (🎁) on cheerful visual themes. These are
+        motivation only — nothing is timed or lost.</div></div>
+      <div class="row"><div class="ic">⚙️</div><div><b>Teacher Settings &amp; Learning Summary.</b> Set the
+        difficulty level, the instruction format (words + pictures + audio, <em>listening only</em>, or
+        <em>reading only</em>), turn on memory mode, topping highlights, or a no-pressure timer, and reduce
+        animation. A <span class="tool">Learning Summary</span> reports orders completed, first-try
+        accuracy, corrections made, order replays, and highest level reached.</div></div>
+    </div>
+
+    <div class="note"><strong>Accessibility built in:</strong> every action is narrated, orders can be
+    audio-only or text-only, animation can be reduced, and the whole game is designed for large touch
+    targets in landscape. No login, no ads, no data leaves the device.</div>
+  </section>
+
+  <!-- ============ 2. STANDARDS ============ -->
+  <section class="card" id="standards">
+    <p class="kicker">Standards alignment</p>
+    <h2>📏 What it aligns to</h2>
+    <p>Primary alignment is to the <strong>CSTA K–12 Computer Science Standards (2017), Level 1A
+    (Grades K–2)</strong>. The advanced difficulty levels reach into <strong>Level 1B (Grades 3–5)</strong>.
+    Each standard below is matched to a concrete action in the game.</p>
+    <p>Because every order arrives as <em>spoken audio</em> first, this game also does something unusual:
+    it exercises the <strong>same computational-thinking loop through the ear (and, in reading mode, the
+    eye)</strong>. A spoken order <em>is</em> an algorithm — a precise, ordered set of instructions the
+    child must take in, break into steps, run in sequence, and check. So the CSTA CT standards below pair
+    naturally with the <strong>Common Core Speaking &amp; Listening (and Reading)</strong> standards; the
+    bridge is spelled out just under the CS tables.</p>
+
+    <h3>CSTA — Level 1A (Grades K–2)</h3>
+    <table>
+      <thead><tr><th>Code</th><th>Standard</th><th>How this game addresses it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="code">1A-AP-08</td>
+          <td><span class="std-title">Model daily processes by creating and following algorithms (sets of step-by-step instructions) to complete tasks.</span></td>
+          <td>Making every pizza follows a fixed algorithm — pat the dough → sauce → cheese → toppings → bake → serve. In “Make My Own!” children create and run their own sequence.</td>
+        </tr>
+        <tr>
+          <td class="code">1A-AP-11</td>
+          <td><span class="std-title">Decompose (break down) the steps needed to solve a problem into a precise sequence of instructions.</span></td>
+          <td>An order (“sauce, cheese, and 3 olives”) is broken into an ordered set of actions the child carries out in turn; the step hints name each step as it comes.</td>
+        </tr>
+        <tr>
+          <td class="code">1A-AP-09</td>
+          <td><span class="std-title">Model the way programs store and manipulate data by using numbers or other symbols to represent information.</span></td>
+          <td>Orders represent information with symbols — a numeral plus topping icons stand for “how many of what.” Children translate those symbols into actions on the pizza.</td>
+        </tr>
+        <tr>
+          <td class="code">1A-AP-14</td>
+          <td><span class="std-title">Debug (identify and fix) errors in an algorithm or program that includes sequences and simple loops.</span></td>
+          <td>The live checklist flags too-many, wrong, or wrong-side toppings; children identify the mismatch and fix it by tapping a topping to remove it before baking.</td>
+        </tr>
+        <tr>
+          <td class="code">1A-DA-05</td>
+          <td><span class="std-title">Store, copy, search, retrieve, modify, and delete information using a computing device and define the information stored as data.</span></td>
+          <td>In memory mode the order is stored and hidden while cooking, so children must retrieve it from memory; adding and removing toppings models modifying and deleting data.</td>
+        </tr>
+        <tr>
+          <td class="code">1A-DA-06</td>
+          <td><span class="std-title">Collect and present the same data in various visual formats.</span></td>
+          <td>The same order is presented three ways at once — spoken audio, written words, and a picture card — helping children see one piece of information in multiple representations.</td>
+        </tr>
+        <tr>
+          <td class="code">1A-CS-01</td>
+          <td><span class="std-title">Select and operate appropriate software to perform a variety of tasks, and recognize that users have different needs and preferences for the technology they use.</span></td>
+          <td>Teacher Settings let the same game be operated as listening-only, reading-only, with reduced animation, or with topping highlights — a concrete example that different users have different needs and preferences.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>CSTA — Level 1B (Grades 3–5) &nbsp;<span style="font-weight:600;color:var(--ink-soft);font-size:14px;">for the advanced levels (3–4)</span></h3>
+    <table>
+      <thead><tr><th>Code</th><th>Standard</th><th>How this game addresses it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="code">1B-AP-10</td>
+          <td><span class="std-title">Create programs that include sequences, events, loops, and conditionals.</span></td>
+          <td>Level 4 orders are governed by conditionals: “put pepperoni <em>on the left</em>,” and “<em>no</em> mushrooms.” Children execute a sequence with conditional rules and repeated (loop-like) placement.</td>
+        </tr>
+        <tr>
+          <td class="code">1B-AP-15</td>
+          <td><span class="std-title">Test and debug (identify and fix errors) a program or algorithm to ensure it runs as intended.</span></td>
+          <td>Before baking, children test their pizza against the order using the checklist and correction prompts, then fix errors — a full test-and-debug loop with immediate feedback.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Computational thinking, received by ear &amp; eye</h3>
+    <div class="note"><strong>The bridge:</strong> a customer's order is an <em>algorithm delivered as
+    spoken language</em>. To fill it, a child has to <em>listen for the key details</em> (which topping,
+    how many, which side, what to leave out), <em>decompose</em> them into an ordered plan, <em>run</em>
+    that plan step by step, and <em>check</em> the result — the exact moves CSTA <span class="code"
+    style="white-space:normal">1A-AP-08</span>, <span class="code" style="white-space:normal">1A-AP-11</span>,
+    and <span class="code" style="white-space:normal">1A-AP-14</span> describe. In <strong>Listening-only</strong>
+    mode the algorithm arrives purely by ear; in <strong>Reading-only</strong> mode it arrives purely as text.
+    That makes the Speaking &amp; Listening (and Reading) standards below the <em>language-side face</em> of
+    the same computational thinking.</div>
+
+    <h4 style="margin:22px 0 2px;font-size:16.5px;">Speaking &amp; Listening (Common Core ELA) — the listening side of CT</h4>
+    <table>
+      <thead><tr><th>Code</th><th>Standard</th><th>How this game addresses it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="code">SL.K.2</td>
+          <td><span class="std-title">Confirm understanding of a text read aloud or information presented orally … by asking and answering questions about key details and requesting clarification if something is not understood.</span></td>
+          <td>Children listen to a spoken order and press <span class="tool">🔊 Hear it</span> to <em>request clarification</em> and confirm the key details before they build — the core K listening skill, front and center in Listening-only mode.</td>
+        </tr>
+        <tr>
+          <td class="code">SL.1.2</td>
+          <td><span class="std-title">Ask and answer questions about key details in a text read aloud or information presented orally or through other media.</span></td>
+          <td>A Level-2 spoken order carries several key details — a topping, a number, and a yes/no sauce/cheese choice. Children must pull each detail from the audio and act on it, replaying as needed to answer “how many?” and “which one?”</td>
+        </tr>
+        <tr>
+          <td class="code">SL.2.2</td>
+          <td><span class="std-title">Recount or describe key ideas or details from a text read aloud or information presented orally or through other media.</span></td>
+          <td>In memory mode (Levels 3–4) the order hides while cooking, so children must <em>recount</em> a multi-part spoken order from memory — including side placement and a “no ___” exclusion — and reproduce it on the pizza.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin:22px 0 2px;font-size:16.5px;">Reading (Common Core ELA) — when the order is read, not heard</h4>
+    <p style="margin:6px 0 0;">With <strong>Instruction format → Reading only</strong>, the audio hides and the
+    order becomes a short written text plus a picture card — turning the same task into emergent reading for
+    meaning. (The game is fully playable without reading, so treat these as an <em>option</em> for readers.)</p>
+    <table>
+      <thead><tr><th>Code</th><th>Standard</th><th>How this game addresses it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="code">RF.K.4</td>
+          <td><span class="std-title">Read emergent-reader texts with purpose and understanding.</span></td>
+          <td>In Reading-only mode the written order is a short emergent-reader text the child reads for a real purpose — to build the pizza correctly — and the checklist confirms their understanding.</td>
+        </tr>
+        <tr>
+          <td class="code">RI.K.1</td>
+          <td><span class="std-title">With prompting and support, ask and answer questions about key details in a text.</span></td>
+          <td>The order card is a tiny informational text; children answer its key-detail questions — <em>what topping? how many? which side?</em> — by placing toppings to match, extending to RI.1.1 / RI.2.1 for older readers.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Math (Common Core)</h3>
+    <table>
+      <thead><tr><th>Code</th><th>Standard</th><th>How this game addresses it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="code">K.CC.B.4</td>
+          <td><span class="std-title">Understand the relationship between numbers and quantities; connect counting to cardinality.</span></td>
+          <td>The order shows a numeral and that many icons; the child places that many real toppings, connecting the number to a quantity.</td>
+        </tr>
+        <tr>
+          <td class="code">K.CC.B.5</td>
+          <td><span class="std-title">Count to answer “how many?” questions about as many as 20 things … and count out that many objects.</span></td>
+          <td>Children count out the requested number of toppings one at a time onto the pizza.</td>
+        </tr>
+        <tr>
+          <td class="code">K.CC.C.6</td>
+          <td><span class="std-title">Identify whether the number of objects in one group is greater than, less than, or equal to the number of objects in another group.</span></td>
+          <td>The checklist compares toppings placed to toppings requested (2 / 3) and signals when there are too many or too few.</td>
+        </tr>
+        <tr>
+          <td class="code">K.MD.B.3</td>
+          <td><span class="std-title">Classify objects into given categories; count the numbers of objects in each category.</span></td>
+          <td>Toppings live in labeled category bins; children choose the right category and count how many belong on the pizza.</td>
+        </tr>
+        <tr>
+          <td class="code">K.G.A.1</td>
+          <td><span class="std-title">…describe the relative positions of these objects using terms such as above, below, beside, in front of, behind, and next to.</span></td>
+          <td>Level 4 asks for toppings on the <em>left</em> or <em>right</em> side of the pizza, giving positional-language practice.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="backtop"><a href="#overview">↑ back to top</a></div>
+  </section>
+
+  <!-- ============ 3. LESSON PLANS ============ -->
+  <section class="card" id="lessons">
+    <p class="kicker">Ready to run</p>
+    <h2>👩‍🏫 Three lesson plans</h2>
+    <p>Each is about 20–30 minutes. Open <strong>Teacher Settings (⚙️)</strong> before the lesson to set
+    the level and instruction format named below. All three work on shared tablets or 1:1 devices.</p>
+
+    <!-- Lesson 1 -->
+    <div class="lesson">
+      <span class="tag">Lesson 1 · Kindergarten · Level 1</span>
+      <h3>Count &amp; Cook</h3>
+      <p class="meta">~20 min · whole group intro, then pairs</p>
+      <p class="lab">Objective</p>
+      <p>Children read a number and place exactly that many toppings, connecting a numeral to a quantity
+      (one-to-one correspondence).</p>
+      <p class="lab">Vocabulary</p>
+      <div class="vocab"><span>order</span><span>topping</span><span>count</span><span>how many</span><span>match</span><span>more / fewer</span></div>
+      <p class="lab">Steps</p>
+      <ol class="steps">
+        <li>In <span class="tool">Teacher Settings ⚙️</span>, set <strong>Difficulty → Level 1</strong> and
+          <strong>Instruction format → Words, pictures, and audio</strong>.</li>
+        <li>As a group, tap <span class="tool">Play!</span>. Listen to the customer, then look at the order
+          card together. Ask: “What number do you see? How many pepperonis should we count?”</li>
+        <li>Model making one pizza: pat the dough, rub the sauce, shake the cheese, then drag toppings
+          <em>one at a time</em>, counting aloud, and watch the <strong>checklist</strong> climb (1 / 3,
+          2 / 3, 3 / 3).</li>
+        <li>Tap <span class="tool">Bake it!</span> then <span class="tool">Serve it!</span> and cheer.</li>
+        <li>Send pairs to play 3–4 orders, taking turns: one child counts out loud, the partner drags.</li>
+      </ol>
+      <p class="lab">Discussion questions</p>
+      <ul class="q">
+        <li>How did you know when you had <em>enough</em> toppings?</li>
+        <li>What did the checklist do when you added one too many? How did you fix it?</li>
+        <li>Show me “one more” and “one fewer” with your fingers.</li>
+      </ul>
+    </div>
+
+    <!-- Lesson 2 -->
+    <div class="lesson">
+      <span class="tag">Lesson 2 · Grade 1 · Level 2 · Listening only</span>
+      <h3>Listen &amp; Decide</h3>
+      <p class="meta">~25 min · pairs</p>
+      <p class="lab">Objective</p>
+      <p>Children follow a spoken multi-part order, making yes/no decisions about ingredients (sauce and
+      cheese) and placing the right number of toppings.</p>
+      <p class="lab">Vocabulary</p>
+      <div class="vocab"><span>listen</span><span>ingredient</span><span>sauce</span><span>cheese</span><span>yes / no</span><span>decide</span><span>check again</span></div>
+      <p class="lab">Steps</p>
+      <ol class="steps">
+        <li>In <span class="tool">Teacher Settings ⚙️</span>, set <strong>Difficulty → Level 2</strong> and
+          <strong>Instruction format → Listening only</strong> (the words hide, so children must listen).</li>
+        <li>Play an order. Encourage children to use <span class="tool">🔊 Hear it</span> to replay it as many
+          times as they need — good listeners check twice.</li>
+        <li>Make the pizza. When the game asks, tap the correct <span class="tool">Add sauce / No sauce</span>
+          and <span class="tool">Add cheese / No cheese</span> button based on what they heard.</li>
+        <li>Drag the requested toppings, using the checklist to self-check, then bake and serve.</li>
+        <li>After ~5 orders, open <span class="tool">Teacher Settings → View learning summary</span> and look
+          at <em>first-try accuracy</em> and <em>order replays</em> together.</li>
+      </ol>
+      <p class="lab">Discussion questions</p>
+      <ul class="q">
+        <li>How did you decide whether to add sauce or say “no sauce”?</li>
+        <li>When is it smart to press “Hear it” again? Is asking to hear it again a good move or a mistake?</li>
+        <li>Which part of the order is easiest to forget — the number, the topping, or the sauce/cheese?</li>
+      </ul>
+    </div>
+
+    <!-- Lesson 3 -->
+    <div class="lesson">
+      <span class="tag">Lesson 3 · Grade 2 (→ Gr. 3) · Levels 3–4</span>
+      <h3>Remember &amp; Arrange</h3>
+      <p class="meta">~30 min · pairs or small groups</p>
+      <p class="lab">Objective</p>
+      <p>Children hold a two-part order in memory, run the steps in the correct sequence, place toppings on
+      the correct side, and leave out a forbidden topping — then test and fix their work before baking.</p>
+      <p class="lab">Vocabulary</p>
+      <div class="vocab"><span>remember</span><span>sequence</span><span>first / next / last</span><span>left / right</span><span>side</span><span>without / “no”</span><span>check &amp; fix</span></div>
+      <p class="lab">Steps</p>
+      <ol class="steps">
+        <li>Warm up in <strong>Level 3</strong> with <span class="tool">Hide the order while cooking</span>
+          switched on (Settings ⚙️). Children listen, then must remember two toppings while they cook.</li>
+        <li>Move to <strong>Level 4</strong>. Now orders add a <em>side</em> (“olives on the left”) and a
+          <em>forbidden</em> topping (“no broccoli!”). Read/replay the order carefully first.</li>
+        <li>Make the pizza in order: dough → sauce/cheese decisions → toppings. Place each topping on the
+          <strong>correct left or right side</strong>, and <strong>skip</strong> the forbidden one.</li>
+        <li>Use the <strong>checklist and correction prompts</strong> to test the pizza against the order;
+          fix any wrong-side or extra toppings <em>before</em> tapping <span class="tool">Bake it!</span></li>
+        <li>Finish with the <span class="tool">Learning Summary</span>: discuss <em>corrections made</em> and
+          <em>highest level</em> as signs of growing, not failing.</li>
+      </ol>
+      <p class="lab">Discussion questions</p>
+      <ul class="q">
+        <li>What is your trick for remembering two toppings at once?</li>
+        <li>Why does the <em>order</em> of the steps matter — could you put toppings on before the sauce?</li>
+        <li>Tell me about a mistake you caught and fixed. How did you know it was wrong?</li>
+      </ul>
+    </div>
+    <div class="backtop"><a href="#overview">↑ back to top</a></div>
+  </section>
+
+  <!-- ============ 4. CONVERSATION STARTERS ============ -->
+  <section class="card" id="talk">
+    <p class="kicker">Talk about it</p>
+    <h2>💬 Conversation starters</h2>
+    <p>Use these while a child plays, or after they build a pizza in <strong>“Make My Own!”</strong> The goal
+    is to get them <em>explaining their thinking</em> — the heart of computational thinking.</p>
+    <div class="starters">
+      <div class="s"><span class="e">🧠</span> “Walk me through how you made this pizza — what did you do
+        <em>first</em>, and what came <em>next</em>?”</div>
+      <div class="s"><span class="e">🔢</span> “How did you make sure you had the right <em>number</em> of
+        each topping?”</div>
+      <div class="s"><span class="e">👂</span> “The customer said a lot! How did you keep track of the whole
+        order?”</div>
+      <div class="s"><span class="e">🛠️</span> “Did anything go wrong? How did you notice, and how did you
+        fix it?”</div>
+      <div class="s"><span class="e">🎨</span> “In your own pizza, why did you choose <em>those</em>
+        toppings? Tell me the recipe.”</div>
+      <div class="s"><span class="e">🍕</span> “If you had to teach a friend to make this exact pizza, what
+        steps would you tell them, in order?”</div>
+      <div class="s"><span class="e">↔️</span> “Where did you put the toppings — and why did the side
+        matter this time?”</div>
+      <div class="s"><span class="e">⭐</span> “Which customer was your favorite to serve? What did they
+        order?”</div>
+    </div>
+    <div class="backtop"><a href="#overview">↑ back to top</a></div>
+  </section>
+
+  <!-- ============ 5. RUBRIC ============ -->
+  <section class="card" id="rubric">
+    <p class="kicker">Capstone assessment</p>
+    <h2>📝 “Make Your Own Pizza” rubric</h2>
+    <p>A simple, kid-friendly capstone: in <strong>“Make My Own!”</strong> mode, each child designs and bakes
+    a pizza, then <em>explains their recipe</em> — the steps, the toppings, and how many of each. Use this
+    3-level rubric to observe. It is a snapshot for planning, not a grade.</p>
+    <table class="rub">
+      <thead><tr><th>What to look for</th><th class="lvl1">1 · Emerging</th><th class="lvl2">2 · Developing</th><th class="lvl3">3 · Confident</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Follows a sequence</strong></td>
+          <td>Needs prompting for each step; may skip or reorder steps.</td>
+          <td>Completes the dough → sauce → cheese → toppings → bake steps with a reminder or two.</td>
+          <td>Runs the full sequence independently and can name the steps “in order.”</td>
+        </tr>
+        <tr>
+          <td><strong>Counting &amp; quantity</strong></td>
+          <td>Adds toppings without counting; unsure how many.</td>
+          <td>Counts out toppings with some miscounts; self-corrects when reminded.</td>
+          <td>Counts out an intended number accurately and can say “I put on ___.”</td>
+        </tr>
+        <tr>
+          <td><strong>Explains the recipe</strong></td>
+          <td>Names one topping or “I made pizza.”</td>
+          <td>Lists the toppings and a couple of steps.</td>
+          <td>Gives a clear, ordered recipe another child could follow.</td>
+        </tr>
+        <tr>
+          <td><strong>Notices &amp; fixes</strong></td>
+          <td>Doesn’t notice mismatches without help.</td>
+          <td>Spots a problem when it’s pointed out and fixes it.</td>
+          <td>Independently checks the pizza and fixes mistakes before baking.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Extension:</strong> have the child dictate their recipe as an “order” for a
+    partner to build in Play mode — turning their creation into instructions someone else can run.</div>
+    <div class="backtop"><a href="#overview">↑ back to top</a></div>
+  </section>
+
+  <footer>
+    Pizza Pals! · Grown-Ups' Corner · Print-friendly · Standards: CSTA 2017 (1A &amp; 1B) and
+    Common Core (Math K.CC/K.MD/K.G · ELA Speaking &amp; Listening SL.K–2.2, Reading RF.K.4 / RI.K.1).
+    Made for classrooms and kitchen tables. 🍕
+  </footer>
+
+</div>
+</body>
+</html>
