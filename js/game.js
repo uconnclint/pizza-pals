@@ -128,6 +128,23 @@ window.__ppStart = function () {
   // fails to load (see voice.js's header comment for how the two combine).
   function vplay(url, fallbackText) { GV.play(url, fallbackText); }
   function vseq(urls, fallbackText) { if (urls && urls.length) GV.seq(urls, fallbackText); }
+
+  // TTS fallback text for the fixed narrator/*.mp3 clips below — copied
+  // verbatim from voice/generate.py's NARR dict (the frozen source of
+  // truth for what each clip actually says), not re-derived from the
+  // on-screen hint strings (which carry trailing emoji unsuited to speech).
+  var NARR_SPEECH = {
+    dough: 'Tap the dough to pat it flat!',
+    sauce: 'Rub the sauce all around!',
+    cheese: 'Tap the pizza to shake on cheese!',
+    toppings: 'Now drag on the toppings!',
+    sandbox: 'Add anything you like, then bake it!',
+    warnWrong: "Hmm, that's not on the order!",
+    warnMany: "Ooh, that's too many! Tap one to take it off.",
+    warnSide: "Oops! Try that topping on the other side.",
+    cheerStar: 'Wow! You are a pizza star!',
+    cheerYummy: 'Yummy! What a great pizza!'
+  };
   // build the clip sequence that reads an order aloud (matches orderSentence)
   function orderClips(charKey, order) {
     var seq = [charKey + '/ordercall.mp3', 'narrator/pizza-base.mp3'];
@@ -363,7 +380,10 @@ window.__ppStart = function () {
       save.stats.replays++;
       persist();
     }
-    vseq(orderClips(st.charKey, st.order));
+    // orderSentence() builds the same content as human-readable prose
+    // (it's what's shown on screen) — the natural TTS fallback if any clip
+    // in the sequence is missing or fails to load.
+    vseq(orderClips(st.charKey, st.order), orderSentence(st.order));
   }
 
   // ---------- counter scene ----------
@@ -408,7 +428,7 @@ window.__ppStart = function () {
     $('speech-order').classList.add('hidden');
     $('btn-hear').classList.add('hidden');
     bubble.classList.remove('hidden');
-    vplay(st.charKey + '/greeting-' + gi + '.mp3');
+    vplay(st.charKey + '/greeting-' + gi + '.mp3', greets[gi]);
     setTimeout(function () { showOrder(ch); }, 1900);
   }
   function showOrder(ch) {
@@ -592,7 +612,9 @@ window.__ppStart = function () {
       $('topping-bins').classList.remove('hidden');
     }
     if (['dough', 'sauce', 'cheese', 'toppings'].indexOf(step) >= 0) {
-      vplay('narrator/' + (step === 'toppings' && st.sandbox ? 'hint-sandbox' : 'hint-' + step) + '.mp3');
+      var sandboxToppings = step === 'toppings' && st.sandbox;
+      vplay('narrator/' + (sandboxToppings ? 'hint-sandbox' : 'hint-' + step) + '.mp3',
+        sandboxToppings ? NARR_SPEECH.sandbox : NARR_SPEECH[step]);
     }
     pizzaZone.setAttribute('aria-label', (stepHints[step] || 'Pizza work area') + ' Press Enter or Space for a keyboard-friendly action.');
     announce(stepHints[step] || 'Pizza step complete');
@@ -986,15 +1008,15 @@ window.__ppStart = function () {
       var need = st.order.toppings[key];
       if (!need) {
         st.orderMistakes++; save.stats.mistakes++;
-        vplay('narrator/warn-wrong.mp3');
+        vplay('narrator/warn-wrong.mp3', NARR_SPEECH.warnWrong);
         AU.sad();
       } else if (st.placed[key] > need) {
         st.orderMistakes++; save.stats.mistakes++;
-        vplay('narrator/warn-many.mp3');
+        vplay('narrator/warn-many.mp3', NARR_SPEECH.warnMany);
         AU.sad();
       } else if (st.order.zones && st.order.zones[key] && st.order.zones[key] !== side) {
         st.orderMistakes++; save.stats.mistakes++;
-        vplay('narrator/warn-side.mp3');
+        vplay('narrator/warn-side.mp3', NARR_SPEECH.warnSide);
         AU.sad();
       } else if (st.placed[key] === need) {
         sparkleAt(clientX, clientY, 6);
@@ -1148,7 +1170,7 @@ window.__ppStart = function () {
     save.sandboxMade = (save.sandboxMade || 0) + 1;
     persist();
     refreshHud();
-    vplay('narrator/cheer-yummy.mp3');
+    vplay('narrator/cheer-yummy.mp3', NARR_SPEECH.cheerYummy);
     setTimeout(startSandbox, 1400);
   }
   function serve() {
@@ -1195,7 +1217,7 @@ window.__ppStart = function () {
       $('speech-order').classList.add('hidden');
       $('btn-hear').classList.add('hidden');
       $('speech-bubble').classList.remove('hidden');
-      vplay(st.charKey + '/happy-' + hi + '.mp3');
+      vplay(st.charKey + '/happy-' + hi + '.mp3', happies[hi]);
       rewardAndContinue();
     }, 1500);
   }
@@ -1242,7 +1264,7 @@ window.__ppStart = function () {
           showBanner('🎉 ' + save.served + ' pizzas! You’re a Pizza Star! 🎉');
           confetti(80);
           AU.tada();
-          vplay('narrator/cheer-star.mp3');
+          vplay('narrator/cheer-star.mp3', NARR_SPEECH.cheerStar);
         }, isNewSticker ? 1400 : 0);
       }
       $('btn-next').classList.remove('hidden');
