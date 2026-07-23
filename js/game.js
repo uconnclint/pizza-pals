@@ -1,8 +1,16 @@
 /* ============================================================
    Pizza Pals! — core game
    Flow: title → customer order → make pizza → bake → serve → repeat
+
+   Boot is a named global (window.__ppStart) called by js/engine-bridge.js
+   — a <script type="module"> that runs AFTER every classic script here,
+   once window.CE exists. This file used to self-invoke via an IIFE, but
+   its save-loading (further down) needs window.CE to already exist, and
+   module scripts always execute after every classic script in the
+   document has run (regardless of source order), so the whole body has to
+   wait for the bridge to call it rather than run itself immediately.
    ============================================================ */
-(function () {
+window.__ppStart = function () {
   'use strict';
 
   // Boot guard: never let a second execution (extension re-injection, bfcache
@@ -1487,6 +1495,9 @@
     showScreen('title');
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-})();
+  // No readiness wait needed here: window.__ppStart (this whole function)
+  // is only ever invoked by js/engine-bridge.js, a <script type="module">,
+  // which always runs after the document has finished parsing — i.e.
+  // strictly after DOMContentLoaded would have fired.
+  init();
+};

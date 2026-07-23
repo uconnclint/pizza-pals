@@ -163,5 +163,14 @@
 <script src="js/assets-characters-b.js?v=10"></script>
 <script src="js/assets-raster.js?v=10"></script>
 <script src="js/game.js?v=10"></script>
+
+<!-- Engine bridge (ES module — builds window.CE, then calls
+     window.__ppStart() to boot the game). Must be the LAST script:
+     everything above is a classic script and needs to have already run
+     and defined its globals (window.GameAudio, window.GameVoice,
+     window.GAME_ASSETS, window.__ppStart) first. Module scripts execute
+     after the document has finished parsing regardless of position, so
+     this only needs to be last for readability, not correctness. -->
+<script type="module" src="js/engine-bridge.js"></script>
 </body>
 </html>
